@@ -23,6 +23,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#define __unused __attribute__((__unused__))
+
 #define xstr(s) xxstr(s)
 #define xxstr(s) #s
 
