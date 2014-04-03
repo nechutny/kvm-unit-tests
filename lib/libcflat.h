@@ -22,6 +22,8 @@
 
 #include <stdarg.h>
 
+#define __unused __attribute__((__unused__))
+
 typedef unsigned char u8;
 typedef signed char s8;
 typedef unsigned short u16;
