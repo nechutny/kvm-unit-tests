@@ -42,7 +42,8 @@ cflatobjs += \
 	lib/arm/io.o \
 	lib/arm/setup.o \
 	lib/arm/spinlock.o \
-	lib/arm/processor.o
+	lib/arm/processor.o \
+	lib/util.o
 
 libeabi = lib/arm/libeabi.a
 eabiobjs = lib/arm/eabi_compat.o
@@ -78,4 +79,3 @@ generated_files = $(asm-offsets)
 test_cases: $(generated_files) $(tests-common) $(tests)
 
 $(TEST_DIR)/selftest.elf: $(cstart.o) $(TEST_DIR)/selftest.o
-

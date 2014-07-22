@@ -12,27 +12,10 @@
 #include "asm/asm-offsets.h"
 #include "asm/processor.h"
 #include "asm/page.h"
+#include "util.h"
 
 #define TESTGRP "selftest"
 
-static char testname[64];
-
-static void testname_set(const char *subtest)
-{
-	strcpy(testname, TESTGRP);
-	if (subtest) {
-		strcat(testname, "::");
-		strcat(testname, subtest);
-	}
-}
-
-static void assert_args(int num_args, int needed_args)
-{
-	if (num_args < needed_args) {
-		printf("%s: not enough arguments\n", testname);
-		abort();
-	}
-}
 
 static char *split_var(char *s, long *val)
 {
@@ -187,9 +170,9 @@ static void check_vectors(void *arg __unused)
 
 int main(int argc, char **argv)
 {
-	testname_set(NULL);
+	testname_set(NULL, NULL);
 	assert_args(argc, 1);
-	testname_set(argv[0]);
+	testname_set(TESTGRP, argv[0]);
 
 	if (strcmp(argv[0], "setup") == 0) {
 
