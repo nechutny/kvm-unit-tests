@@ -212,6 +212,9 @@ asm volatile(								\
 /* Comulative exceptions bits						 */
 #define FPSCR_COMULATIVE	(FPSCR_QC | FPSCR_IDC | FPSCR_IXC | \
 FPSCR_UFC | FPSCR_OFC | FPSCR_DZC | FPSCR_IOC)
+
+#define FPSCR_NO_EXCEPTION	0
+
 /*********************
  * MVFR1 bits        *
  *********************/

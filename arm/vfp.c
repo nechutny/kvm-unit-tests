@@ -136,7 +136,7 @@ static void test_fabsd()
 	 */
 	num.d = -FABSD_NUM;
 	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
-		pass, result.d, num.d, NULL, 0);
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == FABSD_NUM && pass), testname, "-num");
 	
 	/*
@@ -149,7 +149,7 @@ static void test_fabsd()
 	 */
 	num.input = DOUBLE_MINUS_INF;
 	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
-		pass, result.d, num.d, NULL, 0);
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "-inf");
 }
 
@@ -164,7 +164,7 @@ static void test_faddd()
 	num1.d = 1.328125;
 	num2.d = -0.0625;
 	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == 1.265625 && pass), testname,"num");
 	
 	/*
@@ -177,7 +177,7 @@ static void test_faddd()
 	num1.d = 1.77074094636852741313504111531074158847332000732421875;
 	num2.d = 1.97742689232480339800446245135390199720859527587890625;
 	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", ( pass &&
 		result.d == 3.748167838693330811139503566664643585681915283203125),
 		testname, "max precision");
@@ -189,7 +189,7 @@ static void test_faddd()
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = DOUBLE_PLUS_INF;
 	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == num1.input), testname, "(inf)+(inf)");
 
 	/*
@@ -199,12 +199,12 @@ static void test_faddd()
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = 0x3000000000000500;
 	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "inf+num");
 
 	/*
 	 * Test (-inf)+(inf)
-	 * Canceling two infinities should set IVO
+	 * Canceling two infinities should set IOC
 	 */
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = DOUBLE_MINUS_INF;
@@ -284,7 +284,7 @@ static void test_fcmpd()
 
 	/*
 	 * Test (nan), (nan)
-	 * Comparing two Not a number values should set IVO bit in FPSCR
+	 * Comparing two Not a number values should set IOC bit in FPSCR
 	 */
 	num1.input = DOUBLE_PLUS_NAN;
 	num2.input = DOUBLE_MINUS_NAN;
@@ -379,7 +379,7 @@ static void test_fdivd()
 	num1.d = 0.875;
 	num2.d = 0.125;
 	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == 7.0 && pass), testname, "(num)/(num)");
 
 	/*
@@ -433,7 +433,7 @@ static void test_fdivd()
 	 */
 	num2.d = num1.d = 1.0;
 	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, 0);
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == num2.d && pass), testname, "(1.0)/(1.0)");
 }
 
