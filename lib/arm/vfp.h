@@ -21,7 +21,7 @@
 #define FLOAT_UNION(name)				\
 	union {						\
 		unsigned long input;			\
-		float d;				\
+		float f;				\
 	} name;
 
 /*
@@ -70,7 +70,6 @@ asm volatile(								\
 	: "r0"								\
 	);
 
-
 // Constants for DOUBLE_UNION
 #define DOUBLE_PLUS_INF		0x7ff0000000000000
 #define DOUBLE_MINUS_INF	0xfff0000000000000
@@ -78,6 +77,14 @@ asm volatile(								\
 #define DOUBLE_MINUS_NULL	0x8000000000000000
 #define DOUBLE_PLUS_NAN		0x7ff0000000000020
 #define DOUBLE_MINUS_NAN	0xfff0000000000020
+
+// Constants for FLOAT_UNION
+#define FLOAT_PLUS_INF		0x7f800000
+#define FLOAT_MINUS_INF		0xff800000
+#define FLOAT_PLUS_NULL		0x00000000
+#define FLOAT_MINUS_NULL	0x80000000
+#define FLOAT_PLUS_NAN		0x7f800002
+#define FLOAT_MINUS_NAN		0xff800002
 
 /*********************
  * FPSID bits        *
