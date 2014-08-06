@@ -1,5 +1,5 @@
 /*
- * Test ARMv7 (Cortex A-15) VFPv4
+ * Test ARMv7 (Cortex-a15) VFPv4
  *
  * Copyright (C) 2014, Stanislav Nechutny <stanislav@nechutny.net>
  *
@@ -8,20 +8,9 @@
 #include "asm/asm-offsets.h"
 #include "asm/processor.h"
 #include "util.h"
+#include "arm/vfp.h"
 
 #define TESTGRP "vfc"
-#define VFP_EXCEPTION_MASK	0x0000ffff
-#define DOUBLE_PLUS_INF		0x7ff0000000000000
-#define DOUBLE_MINUS_INF	0xfff0000000000000
-#define DOUBLE_PLUS_NULL	0x0000000000000000
-#define DOUBLE_MINUS_NULL	0x8000000000000000
-#define DOUBLE_PLUS_NAN		0x7ff0000000000020
-#define DOUBLE_MINUS_NAN	0xfff0000000000020
-#define DOUBLE_UNION(name)			\
-	union {					\
-		unsigned long long input;	\
-		double d;			\
-	} name;
 
 #define FABSD_NUM	1.56473475206407319770818276083446107804775238037109375
 
@@ -95,8 +84,42 @@ static inline void disable_vfp()
 	);
 }
 
+static int mvfr0_is_supported(unsigned long bits)
+{
+	unsigned long pass = 0;
+	asm volatile(
+		"fmrx r0, mvfr0"		"\n"
+		"and r0, r0, %[mask]"		"\n"
+		"cmp r0, #1"			"\n"
+		"addcs %[pass], %[pass], #1"
+		: [pass]"+r" (pass)
+		: [mask]"r" (bits)
+		: "r0"
+	);
+	return pass;
+}
+
+static void test_available()
+{
+	/* Check if is supported SQRT */
+	report("%s[%s]", mvfr0_is_supported(MVFR0_VFP_SQRT), testname, "SQRT");
+
+	/* Check if is supported DIV */
+	report("%s[%s]", mvfr0_is_supported(MVFR0_VFP_DIV), testname, "DIV");
+
+	/* Check if are supported Double-precision op. */
+	report("%s[%s]", mvfr0_is_supported(MVFR0_VFP_DP), testname, "Double");
+
+	/* Check if are supported Single-precision op. */
+	report("%s[%s]", mvfr0_is_supported(MVFR0_VFP_SP), testname, "Single");
+}
+
 static void test_fabsd()
 {
+	DOUBLE_UNION(result);
+	DOUBLE_UNION(num);
+	unsigned long pass = 0;
+	
 	/*
 	 * Test maximal precision
 	 * IEEE 754 Double is:
@@ -111,13 +134,10 @@ static void test_fabsd()
 	 * 001111111111100100001001001001110100111010110000011110100101001
 	 * resp. 1.56473475206407319770818276083446107804775238037109375
 	 */
-	double result = -FABSD_NUM;
-	asm volatile(
-		"fabsd %[result], %[result]"
-		: [result]"+w" (result)
-	);
-	report("%s[%s]", (result == FABSD_NUM),
-		testname, "-num");
+	num.d = -FABSD_NUM;
+	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
+		pass, result.d, num.d, NULL, 0);
+	report("%s[%s]", (result.d == FABSD_NUM && pass), testname, "-num");
 	
 	/*
 	 * Test -inf
@@ -127,25 +147,25 @@ static void test_fabsd()
 	 * 11 exponent bits all set to 1
 	 * 52 fract bits all set to 0
 	 */
-	DOUBLE_UNION(result2);
-	result2.input = DOUBLE_MINUS_INF;
-	asm volatile(
-		"fabsd %[result], %[result]"
-		: [result]"+w" (result2.d)
-	);
-	report("%s[%s]", (result2.input == DOUBLE_PLUS_INF), testname, "-inf");
+	num.input = DOUBLE_MINUS_INF;
+	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
+		pass, result.d, num.d, NULL, 0);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "-inf");
 }
 
 static void test_faddd()
 {
+	DOUBLE_UNION(num1);
+	DOUBLE_UNION(num2);
+	DOUBLE_UNION(result);
+	unsigned long pass = 0;
+	
 	/* Test 2 nums */
-	double result = 1.328125;
-	asm volatile(
-		"faddd %[result], %[result], %[num]"
-		: [result]"+w" (result)
-		: [num]"w" (-0.0625)
-	);
-	report("%s[%s]", (result == 1.265625), testname,"num");
+	num1.d = 1.328125;
+	num2.d = -0.0625;
+	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", (result.d == 1.265625 && pass), testname,"num");
 	
 	/*
 	 * Testing faddd for maximal precision
@@ -154,66 +174,44 @@ static void test_faddd()
 	 * 
 	 * = 010000000000110111111100001111110110101101111000110110101101100
 	 */
-	result = 1.0;
-	asm volatile(
-		"faddd %[result], %[num1], %[num2]"
-		: [result]"+w" (result)
-		: [num1]"w" (1.77074094636852741313504111531074158847332000732421875),
-		  [num2]"w" (1.97742689232480339800446245135390199720859527587890625)
-	);
-	report("%s[%s]", (result == 3.748167838693330811139503566664643585681915283203125),
+	num1.d = 1.77074094636852741313504111531074158847332000732421875;
+	num2.d = 1.97742689232480339800446245135390199720859527587890625;
+	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", ( pass &&
+		result.d == 3.748167838693330811139503566664643585681915283203125),
 		testname, "max precision");
 
 	/*
 	 * Test inf+inf
 	 * Expected result is +inf as defined in IEEE 754
 	 */
-	DOUBLE_UNION(data);
-	DOUBLE_UNION(result2);
-	data.input = DOUBLE_PLUS_INF;
-	result2.input = 1ULL;
-	asm volatile(
-		"faddd %[result], %[num], %[num]"
-		: [result]"+w" (result2.d)
-		: [num]"w" (data.d)
-	);
-	report("%s[%s]", (data.input == result2.input), testname, "(inf)+(inf)");
-
+	num1.input = DOUBLE_PLUS_INF;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", (result.input == num1.input), testname, "(inf)+(inf)");
 
 	/*
 	 * Test inf+num
 	 * Expected result is +inf
 	 */
-	data.input = DOUBLE_PLUS_INF;
-	result2.input = 0x3000000000000500;
-	asm volatile(
-		"faddd %[result], %[result], %[num]"
-		: [result]"+w" (result2.d)
-		: [num]"w" (data.d)
-	);
-	report("%s[%s]", (data.input == result2.input), testname, "inf+num");
-
+	num1.input = DOUBLE_PLUS_INF;
+	num2.input = 0x3000000000000500;
+	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "inf+num");
 
 	/*
 	 * Test (-inf)+(inf)
 	 * Canceling two infinities should set IVO
 	 */
-	data.input = DOUBLE_PLUS_INF;
-	result2.input = DOUBLE_MINUS_INF;
-	unsigned int ok = 0;
-	asm volatile(
-		"faddd %[result], %[result], %[num1]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #1"				"\n"
-		"addeq %[ok], %[ok], #1"
-		: [result]"+w" (result2.d),
-		  [ok]"+r" (ok)
-		: [num1]"w" (data.d),
-		  [mask]"r" (VFP_EXCEPTION_MASK)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "(-inf)+(inf)");
+	num1.input = DOUBLE_PLUS_INF;
+	num2.input = DOUBLE_MINUS_INF;
+	TEST_VFP_EXCEPTION(
+		"faddd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(-inf)+(inf)");
 }
 
 static void test_fcmpd()
@@ -292,6 +290,9 @@ static void test_fcmpd()
 	num2.input = DOUBLE_MINUS_NAN;
 	unsigned int ok = 0;
 	asm volatile(
+		"fmrx r0, fpscr"		"\n"
+		"bic r0, r0, %[mask]"		"\n"
+		"fmxr fpscr, r0"		"\n"
 		"fcmpd %[num1], %[num2]"	"\n"
 		"fmrx r0, fpscr"		"\n"
 		"and r0, r0, %[mask]"		"\n"
@@ -301,7 +302,7 @@ static void test_fcmpd()
 		: [ok]"+r" (ok)
 		: [num1]"w" (num1.d),
 		  [num2]"w" (num2.d),
-		  [mask]"r" (VFP_EXCEPTION_MASK)
+		  [mask]"r" (FPSCR_COMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (ok), testname, "NaN");
@@ -354,21 +355,21 @@ static void test_fcpyd()
 
 static void test_fdivd()
 {
+	DOUBLE_UNION(num1);
+	DOUBLE_UNION(num2);
+	DOUBLE_UNION(result);
+	unsigned long pass = 0;
+	
 	/*
 	 * Test (num)/(-num)
 	 * Divide positive number by negative.
 	 * Expected result is coresponding negative number.
 	 */
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
 	num1.d = 0.75;
 	num2.d = -0.9375;
-	asm volatile(
-		"fdivd %[num1], %[num1], %[num2]"
-		: [num1]"+w" (num1.d)
-		: [num2]"w" (num2.d)
-	);
-	report("%s[%s]", (num1.d == -0.8), testname, "(num)/(-num)");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IXC);
+	report("%s[%s]", (result.d == -0.8 && pass), testname, "(num)/(-num)");
 
 	/*
 	 * Test (num)/(num)
@@ -377,102 +378,53 @@ static void test_fdivd()
 	 */
 	num1.d = 0.875;
 	num2.d = 0.125;
-	asm volatile(
-		"fdivd %[num1], %[num1], %[num2]"
-		: [num1]"+w" (num1.d)
-		: [num2]"w" (num2.d)
-	);
-	report("%s[%s]", (num1.d == 7.0), testname, "(num)/(num)");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", (result.d == 7.0 && pass), testname, "(num)/(num)");
 
 	/*
 	 * Test 0/0
 	 * Divide by zero.
-	 * Should set IVO bit to 1, others to 0
+	 * Should set IOC bit to 1, others to 0
 	 */
 	num1.d = 0.0;
-	unsigned int ok = 0;
-	asm volatile(
-		"fdivd %[result], %[result], %[result]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #1"				"\n"
-		"addeq %[ok], %[ok], r0"
-		
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "0/0");
+	num2.d = 0.0;
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/0");
 
 	/*
 	 * Test 0/-0
 	 * Divide positive zero by negative zero
-	 * Should set IVO bit to 1, others to 0
+	 * Should set IOC bit to 1, others to 0
 	 */
 	num1.input = DOUBLE_PLUS_NULL;
 	num2.input = DOUBLE_MINUS_NULL;
-	ok = 0;
-	asm volatile(
-		"fdivd %[result], %[result], %[num]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #1"				"\n"
-		"addeq %[ok], %[ok], #1"
-		
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK),
-		  [num]"w" (num2.d)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "0/-0");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/-0");
 
 	/*
 	 * Test 1.25/-0
 	 * Divide number by negative zero.
-	 * Should set DVZ bit to 1, others to 0
-	 * Expected result is negative infinity
+	 * Should set DZC bit to 1, others to 0
 	 */
 	num1.d = 1.25;
 	num2.input = DOUBLE_MINUS_NULL;
-	ok = 0;
-	asm volatile(
-		"fdivd %[result], %[result], %[num]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #2"				"\n"
-		"addeq %[ok], %[ok], #1"
-		
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK),
-		  [num]"w" (num2.d)
-		: "r0"
-	);
-	report("%s[%s]", (ok && num1.input == DOUBLE_MINUS_INF), testname, "num/-0");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_DZC);
+	report("%s[%s]", (pass), testname, "num/-0");
 
 	/*
 	 * Test -inf/inf
 	 * Divide -infinity by +infinity
-	 * Should set IVO bit to 1, others to 0
+	 * Should set IOC bit to 1, others to 0
 	 */
 	num1.input = DOUBLE_MINUS_INF;
 	num2.input = DOUBLE_PLUS_INF;
-	ok = 0;
-	asm volatile(
-		"fdivd %[result], %[result], %[num]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #1"				"\n"
-		"addeq %[ok], %[ok], #1"
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK),
-		  [num]"w" (num2.d)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "(-inf)/(inf)");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(-inf)/(inf)");
 
 	/*
 	 * Test 1.0/1.0
@@ -480,20 +432,9 @@ static void test_fdivd()
 	 * Should set FPSCR bits to 0 and expected result is 1.0
 	 */
 	num2.d = num1.d = 1.0;
-	ok = 0;
-	asm volatile(
-		"fdivd %[result], %[result], %[num]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #0"				"\n"
-		"addeq %[ok], %[ok], #1"
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK),
-		  [num]"w" (num2.d)
-		: "r0"
-	);
-	report("%s[%s]", (ok && num1.input == num2.input), testname, "(1.0)/(1.0)");
+	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, 0);
+	report("%s[%s]", (result.d == num2.d && pass), testname, "(1.0)/(1.0)");
 }
 
 static void test_fnegd()
@@ -542,12 +483,15 @@ static void test_fnegd()
 	/*
 	 * +NaN and check status register
 	 * Try negate +NaN. Result should be same NaN with changed sign bit
-	 * and FPSCR bits 0-15 should be 0
+	 * and exception bits should be 0
 	 */
 	num1.input = DOUBLE_MINUS_NAN;
 	num2.input = DOUBLE_PLUS_NAN;
 	unsigned int ok = 0;
 	asm volatile(
+		"fmrx r0, fpscr"			"\n"
+		"bic r0, r0, %[mask]"			"\n"
+		"fmxr fpscr, r0"			"\n"
 		"fnegd %[result], %[result]"		"\n"
 		"fmrx r0, fpscr"			"\n"
 		"and r0, r0, %[mask]"			"\n"
@@ -556,7 +500,7 @@ static void test_fnegd()
 		
 		: [result]"+w" (num1.d),
 		  [ok]"+r" (ok)
-		: [mask]"r" (VFP_EXCEPTION_MASK)
+		: [mask]"r" (FPSCR_COMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (num1.input == num2.input && ok == 1), testname, "+NaN");
@@ -618,16 +562,19 @@ static void test_fsubd()
 	result2.input = DOUBLE_PLUS_INF;
 	unsigned int ok = 0;
 	asm volatile(
-		"faddd %[result], %[result], %[num1]"	"\n"
 		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[num2]"			"\n"
+		"bic r0, r0, %[mask]"			"\n"
+		"fmxr fpscr, r0"			"\n"
+		"fsubd %[result], %[result], %[num1]"	"\n"
+		"fmrx r0, fpscr"			"\n"
+		"and r0, r0, %[mask]"			"\n"
 		"cmp r0, #1"				"\n"
 		"addeq %[ok], %[ok], #1"
 		
 		: [result]"+w" (result2.d),
 		  [ok]"+r" (ok)
 		: [num1]"w" (data.d),
-		  [num2]"r" (VFP_EXCEPTION_MASK)
+		  [mask]"r" (FPSCR_COMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (ok), testname, "(inf)-(NaN)");
@@ -654,6 +601,12 @@ static void test_disabled(void)
 	install_exception_handler(EXCPTN_UND, und_handler);
 	test_exception("", "fcmpd d0, d1", "");
 	report("%s[%s]", handled, testname, "fcmpd");
+
+	/* Fmrx with disabled VFP */
+	handled = 0;
+	install_exception_handler(EXCPTN_UND, und_handler);
+	test_exception("", "fmrx r0, fpexc", "");
+	report("%s[%s]", handled, testname, "fmrx");
 	
 	install_exception_handler(EXCPTN_UND, NULL);
 }
@@ -665,7 +618,9 @@ int main(int argc, char **argv)
 	testname_set(TESTGRP,argv[0]);
 	enable_vfp();
 
-	if (strcmp(argv[0], "disabled") == 0)
+	if (strcmp(argv[0], "available") == 0)
+		test_available();
+	else if (strcmp(argv[0], "disabled") == 0)
 		test_disabled();
 	else if (strcmp(argv[0], "fabsd") == 0)
 		test_fabsd();
