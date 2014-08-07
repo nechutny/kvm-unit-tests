@@ -302,7 +302,7 @@ static void test_fcmpd()
 		: [ok]"+r" (ok)
 		: [num1]"w" (num1.d),
 		  [num2]"w" (num2.d),
-		  [mask]"r" (FPSCR_COMULATIVE)
+		  [mask]"r" (FPSCR_CUMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (ok), testname, "NaN");
@@ -500,7 +500,7 @@ static void test_fnegd()
 		
 		: [result]"+w" (num1.d),
 		  [ok]"+r" (ok)
-		: [mask]"r" (FPSCR_COMULATIVE)
+		: [mask]"r" (FPSCR_CUMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (num1.input == num2.input && ok == 1), testname, "+NaN");
@@ -574,7 +574,7 @@ static void test_fsubd()
 		: [result]"+w" (result2.d),
 		  [ok]"+r" (ok)
 		: [num1]"w" (data.d),
-		  [mask]"r" (FPSCR_COMULATIVE)
+		  [mask]"r" (FPSCR_CUMULATIVE)
 		: "r0"
 	);
 	report("%s[%s]", (ok), testname, "(inf)-(NaN)");

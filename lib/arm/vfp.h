@@ -66,7 +66,7 @@ asm volatile(								\
 	: [num1]"?w?t?r" (_num1),					\
 	  [num2]"?w?t?r" (_num2),					\
 	  [exceptions]"r" (_exceptions),				\
-	  [mask]"r" (FPSCR_COMULATIVE)					\
+	  [mask]"r" (FPSCR_CUMULATIVE)					\
 	: "r0"								\
 	);
 
@@ -210,7 +210,7 @@ asm volatile(								\
 #define FPSCR_IOC	(1UL << 0)
 
 /* Comulative exceptions bits						 */
-#define FPSCR_COMULATIVE	(FPSCR_QC | FPSCR_IDC | FPSCR_IXC | \
+#define FPSCR_CUMULATIVE	(FPSCR_QC | FPSCR_IDC | FPSCR_IXC | \
 FPSCR_UFC | FPSCR_OFC | FPSCR_DZC | FPSCR_IOC)
 
 #define FPSCR_NO_EXCEPTION	0
