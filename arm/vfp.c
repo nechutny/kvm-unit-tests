@@ -13,6 +13,7 @@
 #define TESTGRP "vfc"
 
 #define FABSD_NUM	1.56473475206407319770818276083446107804775238037109375
+#define FNEGD_NUM	1.98995110431943678097610472832457162439823150634765625
 
 static struct pt_regs expected_regs;
 
@@ -310,47 +311,41 @@ static void test_fcmpd()
 
 static void test_fcpyd()
 {
+	DOUBLE_UNION(num);
+	DOUBLE_UNION(result);
+	unsigned long pass = 0;
+	
 	/*
 	 * Test num to num
 	 * Copy double value from one register to second.
 	 * Expected result is same value in num2 as num1
 	 */
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	num1.d = 1.75;
-	num2.d = -1.25;
-	asm volatile(
-		"fcpyd %[num1], %[num2]"
-		: [num1]"+w" (num1.d)
-		: [num2]"w" (num2.d)
-	);
-	report("%s[%s]", (num1.input == num2.input), testname, "num");
+	num.d = 1.75;
+	TEST_VFP_EXCEPTION("fcpyd %[result], %[num1]",
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (num.input == result.input && pass), testname, "num");
 
 	/*
 	 * Test num to same register
 	 * Copy value from register to same register.
 	 * Expected result is -1.5
 	 */
-	num2.d = num1.d = -1.5;
+	num.d = result.d = -1.5;
 	asm volatile(
 		"fcpyd %[num1], %[num1]"
-		: [num1]"+w" (num1.d)
+		: [num1]"+w" (num.d)
 	);
-	report("%s[%s]", (num1.input == num2.input), testname, "same reg");
+	report("%s[%s]", (result.input == num.input), testname, "same reg");
 
 	/*
 	 * Test copy NaN
 	 * Try copy +NaN from ome register to second.
 	 * Expected result is same NaN in second register as in first.
 	 */
-	num1.d = -1;
-	num2.input = DOUBLE_PLUS_NAN;
-	asm volatile(
-		"fcpyd %[num1], %[num2]"
-		: [num1]"+w" (num1.d)
-		: [num2]"w" (num2.d)
-	);
-	report("%s[%s]", (num1.input == DOUBLE_PLUS_NAN), testname, "NaN");
+	num.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fcpyd %[result], %[num1]",
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_NAN && pass), testname, "NaN");
 }
 
 static void test_fdivd()
@@ -439,20 +434,10 @@ static void test_fdivd()
 
 static void test_fnegd()
 {
-	/*
-	 * -Number
-	 * Negate number, expected is 1.375 for -1.375
-	 */
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	num1.d = -1.375;
-	num2.d = 1.375;
-	asm volatile(
-		"fnegd %[result], %[result]"
-		: [result]"+w" (num1.d)
-	);
-	report("%s[%s]", (num1.input == num2.input), testname, "-num");
-
+	DOUBLE_UNION(num);
+	DOUBLE_UNION(result);
+	unsigned int pass = 0;
+	
 	/*
 	 * +Number
 	 * Negate number with maximal fract bit range
@@ -460,66 +445,48 @@ static void test_fnegd()
 	 * Expected result is
 	 * 101111111111111111010110110101101111100000011011000011101001101
 	 */
-	num1.d = 1.98995110431943678097610472832457162439823150634765625;
-	num2.d = -1.98995110431943678097610472832457162439823150634765625;
-	asm volatile(
-		"fnegd %[result], %[result]"
-		: [result]"+w" (num1.d)
-	);
-	report("%s[%s]", (num1.input == num2.input), testname, "+num");
+	num.d = FNEGD_NUM;
+	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == -FNEGD_NUM && pass), testname, "+num");
 
 	/*
 	 * -Inf
 	 * Negate -infinity to +infinity
 	 */
-	num1.input = DOUBLE_MINUS_INF;
-	num2.input = DOUBLE_PLUS_INF;
-	asm volatile(
-		"fnegd %[result], %[result]"
-		: [result]"+w" (num1.d)
-	);
-	report("%s[%s]", (num1.input == num2.input), testname, "-inf");
+	num.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_MINUS_INF && pass), testname, "-inf");
 
 	/*
 	 * +NaN and check status register
 	 * Try negate +NaN. Result should be same NaN with changed sign bit
 	 * and exception bits should be 0
 	 */
-	num1.input = DOUBLE_MINUS_NAN;
-	num2.input = DOUBLE_PLUS_NAN;
-	unsigned int ok = 0;
-	asm volatile(
-		"fmrx r0, fpscr"			"\n"
-		"bic r0, r0, %[mask]"			"\n"
-		"fmxr fpscr, r0"			"\n"
-		"fnegd %[result], %[result]"		"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #0"				"\n"
-		"addeq %[ok], %[ok], #1"
-		
-		: [result]"+w" (num1.d),
-		  [ok]"+r" (ok)
-		: [mask]"r" (FPSCR_CUMULATIVE)
-		: "r0"
-	);
-	report("%s[%s]", (num1.input == num2.input && ok == 1), testname, "+NaN");
+	num.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_MINUS_NAN && pass), testname, "+NaN");
 }
 
 static void test_fsubd()
 {
+	DOUBLE_UNION(num1);
+	DOUBLE_UNION(num2);
+	DOUBLE_UNION(result);
+	unsigned long pass = 0;
+	
 	/*
 	 * Test two numbers
 	 * Substract one nomber from another.
 	 * Expected result is 2.5
 	 */
-	double volatile result = 2.75;
-	asm volatile(
-		"fsubd %[result], %[result], %[num]"
-		: [result]"+w" (result)
-		: [num]"w" (0.25)
-	);
-	report("%s[%s]", (result == 2.5), testname, "num");
+	num1.d = 2.75;
+	num2.d = 0.25;
+	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == 2.5 && pass), testname, "num");
 
 	/*
 	 * Testing fsubd for maximal precision
@@ -528,56 +495,34 @@ static void test_fsubd()
 	 * Expecting result is
 	 * 110000000001100011010011100101001000011000011111111011000111101
 	 */
-	result = 1.0;
-	asm volatile(
-		"fsubd %[result], %[num1], %[num2]"
-		: [result]"+w" (result)
-		: [num1]"w" (1.77248061294820569155916700765374116599559783935546875),
-		  [num2]"w" (7.97910187425732519983512247563339769840240478515625)
-	);
-	report("%s[%s]", (result == -6.20662126130911950827595546797965653240680694580078125),
-		testname, "max precision");
+	num1.d = 1.77248061294820569155916700765374116599559783935546875;
+	num2.d = 7.97910187425732519983512247563339769840240478515625;
+	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == -6.20662126130911950827595546797965653240680694580078125
+		&& pass), testname, "max precision");
 
 	/*
 	 * Test (-inf)-(+inf)
 	 * Substracting positive infinity from negative infinity
 	 * Expected result is negative inifnity
 	 */
-	DOUBLE_UNION(data);
-	DOUBLE_UNION(result2);
-	data.input = DOUBLE_MINUS_INF;
-	result2.input = DOUBLE_PLUS_INF;
-	asm volatile(
-		"fsubd %[result], %[num], %[result]"
-		: [result]"+w" (result2.d)
-		: [num]"w" (data.d)
-	);
-	report("%s[%s]", (data.input == result2.input), testname, "(-inf)-(+inf)");
+	num1.input = DOUBLE_MINUS_INF;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_MINUS_INF && pass),
+		testname, "(-inf)-(+inf)");
 
 	/*
 	 * Test (inf)-(nan)
-	 * Substracting NaN from infinity should set IVO bit to 1
+	 * Substracting NaN from infinity should set IOC bit to 1
 	 */
-	data.input = DOUBLE_PLUS_NAN;
-	result2.input = DOUBLE_PLUS_INF;
-	unsigned int ok = 0;
-	asm volatile(
-		"fmrx r0, fpscr"			"\n"
-		"bic r0, r0, %[mask]"			"\n"
-		"fmxr fpscr, r0"			"\n"
-		"fsubd %[result], %[result], %[num1]"	"\n"
-		"fmrx r0, fpscr"			"\n"
-		"and r0, r0, %[mask]"			"\n"
-		"cmp r0, #1"				"\n"
-		"addeq %[ok], %[ok], #1"
-		
-		: [result]"+w" (result2.d),
-		  [ok]"+r" (ok)
-		: [num1]"w" (data.d),
-		  [mask]"r" (FPSCR_CUMULATIVE)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "(inf)-(NaN)");
+	num1.input = DOUBLE_PLUS_INF;
+	num2.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(inf)-(NaN)");
 }
 
 static void test_disabled(void)

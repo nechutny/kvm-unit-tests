@@ -32,7 +32,7 @@
  * or 1 for success. 
  *
  * _ins		string with assembler instruction and operands.
- * 		eg. "fadd %[result], %[num1], %[num2]"
+ * 		e.g. "fadd %[result], %[num1], %[num2]"
  *
  * _pass	Variable with exception check status.
  * 		0 fail
