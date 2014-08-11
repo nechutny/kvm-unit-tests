@@ -117,8 +117,8 @@ static void test_available()
 
 static void test_fabsd()
 {
-	DOUBLE_UNION(result);
-	DOUBLE_UNION(num);
+	DOUBLE_UNION(result, 0ULL);
+	DOUBLE_UNION(num, 0ULL);
 	unsigned long pass = 0;
 	
 	/*
@@ -156,9 +156,9 @@ static void test_fabsd()
 
 static void test_faddd()
 {
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	DOUBLE_UNION(result);
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
 	unsigned long pass = 0;
 	
 	/* Test 2 nums */
@@ -269,10 +269,8 @@ static void test_fcmpd()
 	 * other is -0.
 	 */
 	result = 1;
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	num1.input = DOUBLE_PLUS_NULL;
-	num2.input = DOUBLE_MINUS_NULL;
+	DOUBLE_UNION(num1, DOUBLE_PLUS_NULL);
+	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
 	asm volatile(
 		"fcmpd %[num1], %[num2]"	"\n"
 		"fmstat"			"\n"
@@ -311,8 +309,8 @@ static void test_fcmpd()
 
 static void test_fcpyd()
 {
-	DOUBLE_UNION(num);
-	DOUBLE_UNION(result);
+	DOUBLE_UNION(num, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
 	unsigned long pass = 0;
 	
 	/*
@@ -350,9 +348,9 @@ static void test_fcpyd()
 
 static void test_fdivd()
 {
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	DOUBLE_UNION(result);
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
 	unsigned long pass = 0;
 	
 	/*
@@ -434,8 +432,8 @@ static void test_fdivd()
 
 static void test_fnegd()
 {
-	DOUBLE_UNION(num);
-	DOUBLE_UNION(result);
+	DOUBLE_UNION(num, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
 	unsigned int pass = 0;
 	
 	/*
@@ -472,9 +470,9 @@ static void test_fnegd()
 
 static void test_fsubd()
 {
-	DOUBLE_UNION(num1);
-	DOUBLE_UNION(num2);
-	DOUBLE_UNION(result);
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
 	unsigned long pass = 0;
 	
 	/*

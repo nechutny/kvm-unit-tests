@@ -12,17 +12,17 @@
 #define _ARM_VFP_H_
 
 // Create double union with given name and value
-#define DOUBLE_UNION(name)				\
+#define DOUBLE_UNION(name, value)			\
 	union {						\
 		unsigned long long input;		\
 		double d;				\
-	} name;
+	} name = { value };
 
-#define FLOAT_UNION(name)				\
+#define FLOAT_UNION(name, value)			\
 	union {						\
 		unsigned long input;			\
 		float f;				\
-	} name;
+	} name = { value };
 
 /*
  * Test vfp instruction and check exceptions.
