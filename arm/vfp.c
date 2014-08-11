@@ -58,10 +58,9 @@ static inline void enable_vfp()
 		"mcr p15, 0, r0, c1, c0, 2"	"\n"
 		"isb"				"\n"
 
-		"mov r0, #0x40000000"		"\n"
-		"vmsr fpexc, r0"
+		"vmsr fpexc, %[enable_bit]"
 	:
-	:
+	: [enable_bit]"r" (FPEXC_EN)
 	: "r0"
 	);
 }
@@ -297,7 +296,6 @@ static void test_fcmpd()
 		"and r0, r0, %[mask]"		"\n"
 		"cmp r0, #1"			"\n"
 		"addeq %[ok], %[ok], #1"
-		
 		: [ok]"+r" (ok)
 		: [num1]"w" (num1.d),
 		  [num2]"w" (num2.d),
