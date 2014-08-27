@@ -30,7 +30,8 @@ CFLAGS += -ffreestanding
 CFLAGS += -Wextra
 CFLAGS += -O2
 CFLAGS += -I lib -I lib/libfdt
-CFLAGS += -mfpu=vfpv4 -mfloat-abi=softfp
+CFLAGS += -mfpu=vfpv4
+CFLAGS += -mfloat-abi=softfp
 
 asm-offsets = lib/arm/asm-offsets.h
 include config/asm-offsets.mak

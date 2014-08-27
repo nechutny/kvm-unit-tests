@@ -13,7 +13,9 @@
 #define TESTGRP "vfc"
 
 #define FABSD_NUM	1.56473475206407319770818276083446107804775238037109375
+#define FABSS_NUM	124520603648.0
 #define FNEGD_NUM	1.98995110431943678097610472832457162439823150634765625
+#define FNEGS_NUM	124371093714814364473622528.0
 
 static struct pt_regs expected_regs;
 
@@ -39,7 +41,8 @@ static struct pt_regs expected_regs;
 		"str	r1, [r0, #" xstr(S_PC) "]\n"		\
 		excptn_insn "\n"				\
 		post_insns "\n"					\
-	:: "r" (&expected_regs) : "r0", "r1")
+		:						\
+		: "r" (&expected_regs) : "r0", "r1")
 
 int handled;
 static void und_handler()
@@ -59,9 +62,9 @@ static inline void enable_vfp()
 		"isb"				"\n"
 
 		"vmsr fpexc, %[enable_bit]"
-	:
-	: [enable_bit]"r" (FPEXC_EN)
-	: "r0"
+		:
+		: [enable_bit]"r" (FPEXC_EN)
+		: "r0"
 	);
 }
 
@@ -74,13 +77,9 @@ static inline void disable_vfp()
 	asm volatile(
 		"mov r0, #0"			"\n"
 		"vmsr fpexc, r0"		"\n"
-
-		"mov r0, #0"			"\n"
-		"mcr p15, 0, r0, c1, c0, 2"	"\n"
-		"isb"
-	:
-	:
-	: "r0"
+		:
+		:
+		: "r0"
 	);
 }
 
@@ -135,7 +134,7 @@ static void test_fabsd()
 	 * resp. 1.56473475206407319770818276083446107804775238037109375
 	 */
 	num.d = -FABSD_NUM;
-	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fabsd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == FABSD_NUM && pass), testname, "-num");
 	
@@ -148,9 +147,33 @@ static void test_fabsd()
 	 * 52 fract bits all set to 0
 	 */
 	num.input = DOUBLE_MINUS_INF;
-	TEST_VFP_EXCEPTION("fabsd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fabsd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "-inf");
+}
+
+static void test_fabss()
+{
+	FLOAT_UNION(result, 0ULL);
+	FLOAT_UNION(num, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test maximal precision
+	 */
+	num.f = -FABSS_NUM;
+	TEST_VFP_EXCEPTION("fabss %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == FABSS_NUM && pass), testname, "-num");
+	
+	/*
+	 * Test -inf
+	 * expected is +inf
+	 */
+	num.input = FLOAT_MINUS_INF;
+	TEST_VFP_EXCEPTION("fabss %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_INF && pass), testname, "-inf");
 }
 
 static void test_faddd()
@@ -163,7 +186,7 @@ static void test_faddd()
 	/* Test 2 nums */
 	num1.d = 1.328125;
 	num2.d = -0.0625;
-	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("faddd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == 1.265625 && pass), testname,"num");
 	
@@ -176,7 +199,7 @@ static void test_faddd()
 	 */
 	num1.d = 1.77074094636852741313504111531074158847332000732421875;
 	num2.d = 1.97742689232480339800446245135390199720859527587890625;
-	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("faddd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", ( pass &&
 		result.d == 3.748167838693330811139503566664643585681915283203125),
@@ -188,7 +211,7 @@ static void test_faddd()
 	 */
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = DOUBLE_PLUS_INF;
-	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("faddd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == num1.input), testname, "(inf)+(inf)");
 
@@ -198,7 +221,7 @@ static void test_faddd()
 	 */
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = 0x3000000000000500;
-	TEST_VFP_EXCEPTION("faddd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("faddd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass), testname, "inf+num");
 
@@ -209,57 +232,71 @@ static void test_faddd()
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = DOUBLE_MINUS_INF;
 	TEST_VFP_EXCEPTION(
-		"faddd %[result], %[num1], %[num2]",
+		"faddd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(-inf)+(inf)");
+}
+
+static void test_fadds()
+{
+	FLOAT_UNION(num1, 0ULL);
+	FLOAT_UNION(num2, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test inf+inf
+	 * Expected result is +inf as defined in IEEE 754
+	 */
+	num1.input = FLOAT_PLUS_INF;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fadds %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == num1.input), testname, "(inf)+(inf)");
+
+	/*
+	 * Test inf+num
+	 * Expected result is +inf
+	 */
+	num1.input = FLOAT_PLUS_INF;
+	num2.input = 0x30000500;
+	TEST_VFP_EXCEPTION("fadds %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_INF && pass), testname, "inf+num");
+
+	/*
+	 * Test (-inf)+(inf)
+	 * Canceling two infinities should set IOC
+	 */
+	num1.input = FLOAT_PLUS_INF;
+	num2.input = FLOAT_MINUS_INF;
+	TEST_VFP_EXCEPTION(
+		"fadds %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
 	report("%s[%s]", (pass), testname, "(-inf)+(inf)");
 }
 
 static void test_fcmpd()
 {
+	int pass;
+	DOUBLE_UNION(num1,0);
+	DOUBLE_UNION(num2,0);
+	DOUBLE_UNION(result, 0);
+	
 	/*
-	 * Test NF
-	 * Expected is NF=0
+	 * Test for nulled status flags
 	 */
-	int result = 1;
-	asm volatile(
-		"fcmpd %[num1], %[num2]"	"\n"
-		"fmstat"			"\n"
-		"submi %[result], %[result], #1"
-		: [result]"+r" (result)
-		: [num1]"w" (1.5),
-		  [num2]"w" (-1.2)
-	);
-	report("%s[%s]", result, testname, "NF");
+	TEST_VFP_STATUS_FLAGS("fcmpd %P[num1], %P[num2]",
+		pass, result.d, 1.5, -1.2, FPSCR_EMPTY_STATUS);
+	report("%s[%s]", pass, testname, "empty");
 
 	/*
-	 * Test CF
-	 * Expected is CF=0
+	 * Test equality
+	 * Expected is ZF=1 and CF=1
 	 */
-	result = 1;
-	asm volatile(
-		"fcmpd %[num1], %[num2]"	"\n"
-		"fmstat"			"\n"
-		"subcs %[result], %[result], #1"
-		: [result]"+r" (result)
-		: [num1]"w" (1.75),
-		  [num2]"w" (2.0)
-	);
-	report("%s[%s]", result, testname, "CF");
-
-	/*
-	 * Test ZF
-	 * Expected is ZF=0
-	 */
-	result = 1;
-	asm volatile(
-		"fcmpd %[num1], %[num2]"	"\n"
-		"fmstat"			"\n"
-		"subeq %[result], %[result], #1"
-		: [result]"+r" (result)
-		: [num1]"w" (-1.5),
-		  [num2]"w" (1.25)
-	);
-	report("%s[%s]", 1, testname, "ZF");
+	TEST_VFP_STATUS_FLAGS("fcmpd %P[num1], %P[num2]",
+		pass, result.d, 2.0, 2.0, FPSCR_Z|FPSCR_C);
+	report("%s[%s]", pass, testname, "Equal");
 
 	/*
 	 * Test +null and -null
@@ -267,18 +304,11 @@ static void test_fcmpd()
 	 * The IEEE 754 standard specifies equality if one is +0 and the
 	 * other is -0.
 	 */
-	result = 1;
-	DOUBLE_UNION(num1, DOUBLE_PLUS_NULL);
-	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
-	asm volatile(
-		"fcmpd %[num1], %[num2]"	"\n"
-		"fmstat"			"\n"
-		"subne %[result], %[result], #1"
-		: [result]"+r" (result)
-		: [num1]"w" (num1.d),
-		  [num2]"w" (num2.d)
-	);
-	report("%s[%s]", result, testname, "+0.0,-0.0");
+	num1.input = DOUBLE_PLUS_NULL;
+	num2.input = DOUBLE_MINUS_NULL;
+	TEST_VFP_STATUS_FLAGS("fcmpd %P[num1], %P[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_Z|FPSCR_C);
+	report("%s[%s]", pass, testname, "+0.0,-0.0");
 
 	/*
 	 * Test (nan), (nan)
@@ -286,23 +316,54 @@ static void test_fcmpd()
 	 */
 	num1.input = DOUBLE_PLUS_NAN;
 	num2.input = DOUBLE_MINUS_NAN;
-	unsigned int ok = 0;
-	asm volatile(
-		"fmrx r0, fpscr"		"\n"
-		"bic r0, r0, %[mask]"		"\n"
-		"fmxr fpscr, r0"		"\n"
-		"fcmpd %[num1], %[num2]"	"\n"
-		"fmrx r0, fpscr"		"\n"
-		"and r0, r0, %[mask]"		"\n"
-		"cmp r0, #1"			"\n"
-		"addeq %[ok], %[ok], #1"
-		: [ok]"+r" (ok)
-		: [num1]"w" (num1.d),
-		  [num2]"w" (num2.d),
-		  [mask]"r" (FPSCR_CUMULATIVE)
-		: "r0"
-	);
-	report("%s[%s]", (ok), testname, "NaN");
+	TEST_VFP_EXCEPTION("fcmpd %P[num1], %P[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", pass, testname, "NaN");
+}
+
+static void test_fcmps()
+{
+	int pass;
+	FLOAT_UNION(num1,0);
+	FLOAT_UNION(num2,0);
+	FLOAT_UNION(result, 0);
+	
+	/*
+	 * Test for nulled status flags
+	 */
+	TEST_VFP_STATUS_FLAGS("fcmps %[num1], %[num2]",
+		pass, result.f, (float)1.5, (float)-1.2, FPSCR_EMPTY_STATUS);
+	report("%s[%s]", pass, testname, "empty");
+
+	/*
+	 * Test ZF
+	 * Expected is ZF=1
+	 */
+	TEST_VFP_STATUS_FLAGS("fcmps %[num1], %[num2]",
+		pass, result.f, (float)2.0, (float)2.0, FPSCR_Z|FPSCR_C);
+	report("%s[%s]", pass, testname, "ZF");
+
+	/*
+	 * Test +null and -null
+	 * 
+	 * The IEEE 754 standard specifies equality if one is +0 and the
+	 * other is -0.
+	 */
+	num1.input = FLOAT_PLUS_NULL;
+	num2.input = FLOAT_MINUS_NULL;
+	TEST_VFP_STATUS_FLAGS("fcmps %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_Z|FPSCR_C);
+	report("%s[%s]", pass, testname, "+0.0,-0.0");
+
+	/*
+	 * Test (nan), (nan)
+	 * Comparing two Not a number values should set IOC bit in FPSCR
+	 */
+	num1.input = FLOAT_PLUS_NAN;
+	num2.input = FLOAT_MINUS_NAN;
+	TEST_VFP_EXCEPTION("fcmps %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", pass, testname, "NaN");
 }
 
 static void test_fcpyd()
@@ -317,7 +378,7 @@ static void test_fcpyd()
 	 * Expected result is same value in num2 as num1
 	 */
 	num.d = 1.75;
-	TEST_VFP_EXCEPTION("fcpyd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fcpyd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (num.input == result.input && pass), testname, "num");
 
@@ -328,7 +389,7 @@ static void test_fcpyd()
 	 */
 	num.d = result.d = -1.5;
 	asm volatile(
-		"fcpyd %[num1], %[num1]"
+		"fcpyd %P[num1], %P[num1]"
 		: [num1]"+w" (num.d)
 	);
 	report("%s[%s]", (result.input == num.input), testname, "same reg");
@@ -339,9 +400,48 @@ static void test_fcpyd()
 	 * Expected result is same NaN in second register as in first.
 	 */
 	num.input = DOUBLE_PLUS_NAN;
-	TEST_VFP_EXCEPTION("fcpyd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fcpyd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_PLUS_NAN && pass), testname, "NaN");
+}
+
+static void test_fcpys()
+{
+	FLOAT_UNION(num, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test num to num
+	 * Copy float value from one register to second.
+	 * Expected result is same value in num2 as num1
+	 */
+	num.f = 428170093236191673322385178624.0;
+	TEST_VFP_EXCEPTION("fcpys %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (num.input == result.input && pass), testname, "num");
+
+	/*
+	 * Test num to same register
+	 * Copy value from register to same register.
+	 * Expected result is -1.5
+	 */
+	num.f = result.f = -398459532293342546724806197248.0;
+	asm volatile(
+		"fcpys %[num1], %[num1]"
+		: [num1]"+w" (num.f)
+	);
+	report("%s[%s]", (result.input == num.input), testname, "same reg");
+
+	/*
+	 * Test copy NaN
+	 * Try copy +NaN from ome register to second.
+	 * Expected result is same NaN in second register as in first.
+	 */
+	num.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fcpys %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_NAN && pass), testname, "NaN");
 }
 
 static void test_fdivd()
@@ -352,24 +452,24 @@ static void test_fdivd()
 	unsigned long pass = 0;
 	
 	/*
-	 * Test (num)/(-num)
+	 * Test (num1)/(-num2)
 	 * Divide positive number by negative.
 	 * Expected result is coresponding negative number.
 	 */
 	num1.d = 0.75;
 	num2.d = -0.9375;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
-		pass, result.d, num1.d, num2.d, FPSCR_IXC);
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
+		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == -0.8 && pass), testname, "(num)/(-num)");
 
 	/*
-	 * Test (num)/(num)
+	 * Test (num1)/(num2)
 	 * Divivde two positive numbers.
 	 * Expected result is coresponding positive number.
 	 */
 	num1.d = 0.875;
 	num2.d = 0.125;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == 7.0 && pass), testname, "(num)/(num)");
 
@@ -380,7 +480,7 @@ static void test_fdivd()
 	 */
 	num1.d = 0.0;
 	num2.d = 0.0;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_IOC);
 	report("%s[%s]", (pass), testname, "0/0");
 
@@ -391,7 +491,7 @@ static void test_fdivd()
 	 */
 	num1.input = DOUBLE_PLUS_NULL;
 	num2.input = DOUBLE_MINUS_NULL;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_IOC);
 	report("%s[%s]", (pass), testname, "0/-0");
 
@@ -402,7 +502,7 @@ static void test_fdivd()
 	 */
 	num1.d = 1.25;
 	num2.input = DOUBLE_MINUS_NULL;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_DZC);
 	report("%s[%s]", (pass), testname, "num/-0");
 
@@ -413,7 +513,7 @@ static void test_fdivd()
 	 */
 	num1.input = DOUBLE_MINUS_INF;
 	num2.input = DOUBLE_PLUS_INF;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_IOC);
 	report("%s[%s]", (pass), testname, "(-inf)/(inf)");
 
@@ -423,9 +523,93 @@ static void test_fdivd()
 	 * Should set FPSCR bits to 0 and expected result is 1.0
 	 */
 	num2.d = num1.d = 1.0;
-	TEST_VFP_EXCEPTION("fdivd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fdivd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == num2.d && pass), testname, "(1.0)/(1.0)");
+}
+
+static void test_fdivs()
+{
+	FLOAT_UNION(num1, 0ULL);
+	FLOAT_UNION(num2, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test (num1)/(-num2)
+	 * Divide positive number by negative.
+	 * Expected result is coresponding negative number.
+	 */
+	num1.f = 0.75;
+	num2.f = -0.1;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == -7.5 && pass), testname, "(num)/(-num)");
+
+	/*
+	 * Test (num1)/(num2)
+	 * Divivde two positive numbers.
+	 * Expected result is coresponding positive number.
+	 */
+	num1.f = 0.875;
+	num2.f = 0.125;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 7.0 && pass), testname, "(num)/(num)");
+
+	/*
+	 * Test 0/0
+	 * Divide by zero.
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.f = 0.0;
+	num2.f = 0.0;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/0");
+
+	/*
+	 * Test 0/-0
+	 * Divide positive zero by negative zero
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.input = FLOAT_PLUS_NULL;
+	num2.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/-0");
+
+	/*
+	 * Test 1.25/-0
+	 * Divide number by negative zero.
+	 * Should set DZC bit to 1, others to 0
+	 */
+	num1.f = 1.25;
+	num2.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_DZC);
+	report("%s[%s]", (pass), testname, "num/-0");
+
+	/*
+	 * Test -inf/inf
+	 * Divide -infinity by +infinity
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.input = FLOAT_MINUS_INF;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(-inf)/(inf)");
+
+	/*
+	 * Test 1.0/1.0
+	 * Divide 1 by 1, fract is 0, so test correct detecting 1.0 vs. 0.0
+	 * Should set FPSCR bits to 0 and expected result is 1.0
+	 */
+	num2.f = num1.f = 1.0;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == num2.f && pass), testname, "(1.0)/(1.0)");
 }
 
 static void test_fnegd()
@@ -442,7 +626,7 @@ static void test_fnegd()
 	 * 101111111111111111010110110101101111100000011011000011101001101
 	 */
 	num.d = FNEGD_NUM;
-	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fnegd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == -FNEGD_NUM && pass), testname, "+num");
 
@@ -451,7 +635,7 @@ static void test_fnegd()
 	 * Negate -infinity to +infinity
 	 */
 	num.input = DOUBLE_PLUS_INF;
-	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fnegd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_MINUS_INF && pass), testname, "-inf");
 
@@ -461,9 +645,44 @@ static void test_fnegd()
 	 * and exception bits should be 0
 	 */
 	num.input = DOUBLE_PLUS_NAN;
-	TEST_VFP_EXCEPTION("fnegd %[result], %[num1]",
+	TEST_VFP_EXCEPTION("fnegd %P[result], %P[num1]",
 		pass, result.d, num.d, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_MINUS_NAN && pass), testname, "+NaN");
+}
+
+static void test_fnegs()
+{
+	FLOAT_UNION(num, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned int pass = 0;
+	
+	/*
+	 * +Number
+	 * Negate number with maximal fract bit range
+	 */
+	num.f = FNEGS_NUM;
+	TEST_VFP_EXCEPTION("fnegs %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == -FNEGS_NUM && pass), testname, "+num");
+
+	/*
+	 * -Inf
+	 * Negate -infinity to +infinity
+	 */
+	num.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnegs %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_MINUS_INF && pass), testname, "-inf");
+
+	/*
+	 * +NaN and check status register
+	 * Try negate +NaN. Result should be same NaN with changed sign bit
+	 * and exception bits should be 0
+	 */
+	num.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fnegs %[result], %[num1]",
+		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_MINUS_NAN && pass), testname, "+NaN");
 }
 
 static void test_fsubd()
@@ -480,7 +699,7 @@ static void test_fsubd()
 	 */
 	num1.d = 2.75;
 	num2.d = 0.25;
-	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fsubd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == 2.5 && pass), testname, "num");
 
@@ -493,7 +712,7 @@ static void test_fsubd()
 	 */
 	num1.d = 1.77248061294820569155916700765374116599559783935546875;
 	num2.d = 7.97910187425732519983512247563339769840240478515625;
-	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fsubd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.d == -6.20662126130911950827595546797965653240680694580078125
 		&& pass), testname, "max precision");
@@ -505,7 +724,7 @@ static void test_fsubd()
 	 */
 	num1.input = DOUBLE_MINUS_INF;
 	num2.input = DOUBLE_PLUS_INF;
-	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fsubd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == DOUBLE_MINUS_INF && pass),
 		testname, "(-inf)-(+inf)");
@@ -516,8 +735,59 @@ static void test_fsubd()
 	 */
 	num1.input = DOUBLE_PLUS_INF;
 	num2.input = DOUBLE_PLUS_NAN;
-	TEST_VFP_EXCEPTION("fsubd %[result], %[num1], %[num2]",
+	TEST_VFP_EXCEPTION("fsubd %P[result], %P[num1], %P[num2]",
 		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(inf)-(NaN)");
+}
+
+static void test_fsubs()
+{
+	FLOAT_UNION(num1, 0ULL);
+	FLOAT_UNION(num2, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test two numbers
+	 * Substract one nomber from another.
+	 * Expected result is 2.5
+	 */
+	num1.f = 2.75;
+	num2.f = 0.25;
+	TEST_VFP_EXCEPTION("fsubs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 2.5 && pass), testname, "num");
+
+	/*
+	 * Testing fsubs for maximal precision
+	 */
+	num1.f = 30910960529778934627851829249.0;
+	num2.f = 1;
+	TEST_VFP_EXCEPTION("fsubs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 30910960529778934627851829248.0
+		&& pass), testname, "max precision");
+
+	/*
+	 * Test (-inf)-(+inf)
+	 * Substracting positive infinity from negative infinity
+	 * Expected result is negative inifnity
+	 */
+	num1.input = FLOAT_MINUS_INF;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fsubs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_MINUS_INF && pass),
+		testname, "(-inf)-(+inf)");
+
+	/*
+	 * Test (inf)-(nan)
+	 * Substracting NaN from infinity should set IOC bit to 1
+	 */
+	num1.input = FLOAT_PLUS_INF;
+	num2.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fsubs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
 	report("%s[%s]", (pass), testname, "(inf)-(NaN)");
 }
 
@@ -543,11 +813,23 @@ static void test_disabled(void)
 	test_exception("", "fcmpd d0, d1", "");
 	report("%s[%s]", handled, testname, "fcmpd");
 
-	/* Fmrx with disabled VFP */
+	/* Fmrx fpexc with disabled VFP */
 	handled = 0;
 	install_exception_handler(EXCPTN_UND, und_handler);
 	test_exception("", "fmrx r0, fpexc", "");
-	report("%s[%s]", handled, testname, "fmrx");
+	report("%s[%s]", !handled, testname, "fmrx fpexc");
+
+	/* Fnegs with disabled VFP */
+	handled = 0;
+	install_exception_handler(EXCPTN_UND, und_handler);
+	test_exception("", "fnegs s0, s1", "");
+	report("%s[%s]", handled, testname, "fnegs");
+
+	/* Fmrx fpscr with disabled VFP */
+	handled = 0;
+	install_exception_handler(EXCPTN_UND, und_handler);
+	test_exception("", "fmrx r0, fpscr", "");
+	report("%s[%s]", handled, testname, "fmrx fpscr");
 	
 	install_exception_handler(EXCPTN_UND, NULL);
 }
@@ -565,20 +847,34 @@ int main(int argc, char **argv)
 		test_disabled();
 	else if (strcmp(argv[0], "fabsd") == 0)
 		test_fabsd();
+	else if (strcmp(argv[0], "fabss") == 0)
+		test_fabss();
 	else if (strcmp(argv[0], "faddd") == 0)
 		test_faddd();
+	else if (strcmp(argv[0], "fadds") == 0)
+		test_fadds();
 	else if (strcmp(argv[0], "fcmpd") == 0)
 		test_fcmpd();
+	else if (strcmp(argv[0], "fcmps") == 0)
+		test_fcmps();
 	else if (strcmp(argv[0], "fcpyd") == 0)
 		test_fcpyd();
+	else if (strcmp(argv[0], "fcpys") == 0)
+		test_fcpys();
 	else if (strcmp(argv[0], "fdivd") == 0)
 		test_fdivd();
+	else if (strcmp(argv[0], "fdivs") == 0)
+		test_fdivs();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
+	else if (strcmp(argv[0], "fnegs") == 0)
+		test_fnegs();
 	else if (strcmp(argv[0], "fsubd") == 0)
 		test_fsubd();
+	else if (strcmp(argv[0], "fsubs") == 0)
+		test_fsubs();
 	else 
-		printf("Unkown test\n");
+		printf("Error: Unkown test\n");
 
 	return report_summary();
 }

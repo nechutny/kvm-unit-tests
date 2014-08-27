@@ -27,46 +27,96 @@
 /*
  * Test vfp instruction and check exceptions.
  * 
- * Macro as first step reset FPSCR exceptions, then execute instruction, 
- * compare exceptions with expected and set to _pass variable 0 for fail,
- * or 1 for success. 
+ * Macro as first step set to _pass variable 0, reset FPSCR exceptions, then
+ * execute instruction(s), compare exceptions with expected and increase _pass
+ * by 1 if success. 
  *
- * _ins		string with assembler instruction and operands.
- * 		e.g. "fadd %[result], %[num1], %[num2]"
+ * _ins		string with assembler instruction and operands. Can carry more
+ * 		instructions separated by new line.
+ * 		e.g. "faddd %P[result], %P[num1], %P[num2]"
  *
  * _pass	Variable with exception check status.
  * 		0 fail
  * 		1 success
  *
- * _result	Double/Float/Integer variable for write.
+ * _result	Double/Float variable for write.
  * 		Accessable via %[result]
  *
- * _num1	Double/Float/Integer variable for passing value to vfp register.
+ * _num1	Double/Float variable for passing value to vfp register.
  * 		Accessable via %[num1]
  *
- * _num2	Double/Float/Integer variable for passing value to vfp register.
+ * _num2	Double/Float variable for passing value to vfp register.
  * 		Accessable via %[num2]
  *
  * _exceptions	Expected exceptions.
  * 		For easy value assembling are defined FPSCR_* constants
+ *
+ * NOTE:	When using double-precision operands and GCC's -O2 argument is
+ * 		suggested to use %P[name]
  */
 #define TEST_VFP_EXCEPTION(_ins, _pass, _result, _num1, _num2, _exceptions) \
 asm volatile(								\
+	"mov %[pass], #0"			"\n"			\
 	"fmrx r0, fpscr"			"\n"			\
 	"bic r0, r0, %[mask]"			"\n"			\
 	"fmxr fpscr, r0"			"\n"			\
 	_ins					"\n"			\
 	"fmrx r0, fpscr"			"\n"			\
 	"and r0, r0, %[mask]"			"\n"			\
-	"mov %[pass], #0"			"\n"			\
 	"cmp r0, %[exceptions]"			"\n"			\
 	"addeq %[pass], %[pass], #1"					\
-	: [result]"=?w?t?r" (_result),					\
+	: [result]"=?w?t" (_result),					\
 	  [pass]"=r" (_pass)						\
-	: [num1]"?w?t?r" (_num1),					\
-	  [num2]"?w?t?r" (_num2),					\
+	: [num1]"?w?t" (_num1),						\
+	  [num2]"?w?t" (_num2),						\
 	  [exceptions]"r" (_exceptions),				\
 	  [mask]"r" (FPSCR_CUMULATIVE)					\
+	: "r0"								\
+	);
+
+/*
+ * Test vfp instruction and check status flags.
+ * 
+ * Macro as first step set to _pass variable 0, then execute instruction(s),
+ * compare status flags with expected and increase _pass by 1 if success. 
+ *
+ * _ins		string with assembler instruction and operands. Can carry more
+ * 		instructions separated by new line.
+ * 		e.g. "fcmpd %P[num1], %P[num2]"
+ *
+ * _pass	Variable with flags check status.
+ * 		0 fail
+ * 		1 success
+ *
+ * _result	Double/Float variable for write.
+ * 		Accessable via %[result]
+ *
+ * _num1	Double/Float variable for passing value to vfp register.
+ * 		Accessable via %[num1]
+ *
+ * _num2	Double/Float variable for passing value to vfp register.
+ * 		Accessable via %[num2]
+ *
+ * _flags	Expected status flags.
+ * 		For easy value assembling are defined FPSCR_* constants
+ *
+ * NOTE:	When using double-precision operands and GCC's -O2 argument is
+ * 		suggested to use %P[name]
+ */
+#define TEST_VFP_STATUS_FLAGS(_ins, _pass, _result, _num1, _num2, _flags) \
+asm volatile(								\
+	"mov %[pass], #0"			"\n"			\
+	_ins					"\n"			\
+	"fmrx r0, fpscr"			"\n"			\
+	"and r0, r0, %[mask]"			"\n"			\
+	"cmp r0, %[flags]"			"\n"			\
+	"addeq %[pass], %[pass], #1"					\
+	: [result]"=?w?t" (_result),					\
+	  [pass]"=r" (_pass)						\
+	: [num1]"?w?t" (_num1),						\
+	  [num2]"?w?t" (_num2),						\
+	  [flags]"r" (_flags),						\
+	  [mask]"r" (FPSCR_STATUS_FLAGS)				\
 	: "r0"								\
 	);
 
@@ -213,7 +263,11 @@ asm volatile(								\
 #define FPSCR_CUMULATIVE	(FPSCR_QC | FPSCR_IDC | FPSCR_IXC | \
 FPSCR_UFC | FPSCR_OFC | FPSCR_DZC | FPSCR_IOC)
 
-#define FPSCR_NO_EXCEPTION	0
+/* Status flags bits							 */
+#define FPSCR_STATUS_FLAGS	(FPSCR_Z | FPSCR_C | FPSCR_N | FPSCR_V)
+
+#define FPSCR_NO_EXCEPTION	0ULL
+#define FPSCR_EMPTY_STATUS	0ULL
 
 /*********************
  * MVFR1 bits        *
