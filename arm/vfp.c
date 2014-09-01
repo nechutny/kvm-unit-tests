@@ -479,6 +479,132 @@ static void test_fcpys()
 	report("%s[%s]", (result.input == FLOAT_PLUS_NAN && pass), testname, "NaN");
 }
 
+static void test_fcvtds()
+{
+	FLOAT_UNION(num, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Convert single-precision number to double
+	 */
+	num.f = 7642.75;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == 7642.75 && pass), testname, "Num");
+
+	/*
+	 * Convert signed single-precision number to double
+	 */
+	num.f = -642.75;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == -642.75 && pass), testname, "-Num");
+
+	/*
+	 * Convert  null
+	 */
+	num.input = FLOAT_PLUS_NULL;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_NULL && pass),
+		testname, "0");
+
+	/*
+	 * Convert signed null
+	 */
+	num.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_MINUS_NULL && pass),
+		testname, "-0");
+
+	/*
+	 * Convert Inf
+	 */
+	num.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass),
+		testname, "Inf");
+
+	/*
+	 * Convert -NaN
+	 */
+	num.input = FLOAT_MINUS_NAN;
+	TEST_VFP_EXCEPTION("fcvtds %P[result], %[num1]",
+		pass, result.d, num.f, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-NaN");
+}
+
+static void test_fcvtsd()
+{
+	DOUBLE_UNION(num, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Convert double-precision number to single
+	 */
+	num.d = 7642.75;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 7642.75 && pass), testname, "Num");
+
+	/*
+	 * Convert signed single-precision number to double
+	 */
+	num.d = -642.75;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == -642.75 && pass), testname, "-Num");
+
+	/*
+	 * Convert null
+	 */
+	num.input = DOUBLE_PLUS_NULL;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_NULL && pass),
+		testname, "0");
+
+	/*
+	 * Convert signed null
+	 */
+	num.input = DOUBLE_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_MINUS_NULL && pass),
+		testname, "-0");
+
+	/*
+	 * Convert Inf
+	 */
+	num.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_INF && pass),
+		testname, "Inf");
+
+	/*
+	 * Convert -NaN
+	 */
+	num.input = DOUBLE_MINUS_NAN;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-NaN");
+
+	/*
+	 * Convert Double-preciosin number to single-precision which is bigger
+	 * than float maximal value
+	 * 
+	 */
+	num.d = -86468416584861351.1328461651165;
+	TEST_VFP_EXCEPTION("fcvtsd %[result], %P[num1]",
+		pass, result.f, num.d, NULL, FPSCR_IXC);
+	report("%s[%s]", (pass), testname, "Inexact");
+}
+
 static void test_fdivd()
 {
 	DOUBLE_UNION(num1, 0ULL);
@@ -1064,6 +1190,10 @@ int main(int argc, char **argv)
 		test_fcpyd();
 	else if (strcmp(argv[0], "fcpys") == 0)
 		test_fcpys();
+	else if (strcmp(argv[0], "fcvtds") == 0)
+		test_fcvtds();
+	else if (strcmp(argv[0], "fcvtsd") == 0)
+		test_fcvtsd();
 	else if (strcmp(argv[0], "fdivd") == 0)
 		test_fdivd();
 	else if (strcmp(argv[0], "fdivs") == 0)
