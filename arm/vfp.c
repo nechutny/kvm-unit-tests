@@ -685,6 +685,171 @@ static void test_fnegs()
 	report("%s[%s]", (result.input == FLOAT_MINUS_NAN && pass), testname, "+NaN");
 }
 
+static void test_fsqrtd()
+{
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Test square for 4, expected value is 2
+	 */
+	num1.d = 4;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == 2 && pass), testname, "num");
+
+	/*
+	 * Test sqrt with inaccurate result
+	 * should throw Inexact exception
+	 */
+	num1.d = 162.639023;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_IXC);
+	report("%s[%s]", (result.input == 0x4029818949B6B583 && pass),
+		testname, "Inaccurate");
+
+	/*
+	 * Test sqrt 0
+	 */
+	num1.d = 0;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == 0 && pass), testname, "0");
+
+	/*
+	 * Test sqrt -0
+	 */
+	num1.input = DOUBLE_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.d == 0 && pass), testname, "-0");
+
+	/*
+	 * Test sqrt -1
+	 * should throw Invalid operation
+	 */
+	num1.d = -1;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-1");
+
+	/*
+	 * NaN, should throw Invalid operation exception
+	 */
+	num1.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "+NaN");
+
+	/*
+	 * -NaN, should throw Invalid operation exception
+	 */
+	num1.input = DOUBLE_MINUS_NAN;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-NaN");
+
+	/*
+	 * +Inf, should not thow any exception
+	 */
+	num1.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass),
+		testname, "+Inf");
+
+	/*
+	 * -Inf, should throw invalid operation
+	 */
+	num1.input = DOUBLE_MINUS_INF;
+	TEST_VFP_EXCEPTION("fsqrtd %P[result], %P[num1]",
+		pass, result.d, num1.d, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-Inf");
+}
+
+static void test_fsqrts()
+{
+	FLOAT_UNION(num1, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Test square for 4, expected value is 2
+	 */
+	num1.f = 4;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 2 && pass), testname, "num");
+
+	/*
+	 * Test sqrt with inaccurate result
+	 * should throw Inexact exception
+	 */
+	num1.f = 833118.0;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_IXC);
+	report("%s[%s]", (pass), testname, "Inaccurate");
+
+	/*
+	 * Test sqrt 0
+	 */
+	num1.f = 0;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 0 && pass), testname, "0");
+
+	/*
+	 * Test sqrt -0
+	 */
+	num1.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 0 && pass), testname, "-0");
+
+	/*
+	 * Test sqrt -1
+	 * should throw Invalid operation
+	 */
+	num1.f = -1;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-1");
+
+	/*
+	 * NaN, should throw Invalid operation exception
+	 */
+	num1.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "+NaN");
+
+	/*
+	 * -NaN, should throw Invalid operation exception
+	 */
+	num1.input = FLOAT_MINUS_NAN;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-NaN");
+
+	/*
+	 * +Inf, should not thow any exception
+	 */
+	num1.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.input == FLOAT_PLUS_INF && pass),
+		testname, "+Inf");
+
+	/*
+	 * -Inf, should throw invalid operation
+	 */
+	num1.input = FLOAT_MINUS_INF;
+	TEST_VFP_EXCEPTION("fsqrts %[result], %[num1]",
+		pass, result.f, num1.f, NULL, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "-Inf");
+}
+
 static void test_fsubd()
 {
 	DOUBLE_UNION(num1, 0ULL);
@@ -869,6 +1034,10 @@ int main(int argc, char **argv)
 		test_fnegd();
 	else if (strcmp(argv[0], "fnegs") == 0)
 		test_fnegs();
+	else if (strcmp(argv[0], "fsqrtd") == 0)
+		test_fsqrtd();
+	else if (strcmp(argv[0], "fsqrts") == 0)
+		test_fsqrts();
 	else if (strcmp(argv[0], "fsubd") == 0)
 		test_fsubd();
 	else if (strcmp(argv[0], "fsubs") == 0)
