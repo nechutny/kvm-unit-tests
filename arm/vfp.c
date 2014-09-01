@@ -113,6 +113,41 @@ static void test_available()
 	report("%s[%s]", mvfr0_is_supported(MVFR0_VFP_SP), testname, "Single");
 }
 
+static void test_cumulative()
+{
+	/*
+	 * FPSCR exception bits are cumulative, so must be se to 0 manualy
+	 */
+	DOUBLE_UNION(result, 0ULL);
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * First instruction set Invalid operation, second don't set any
+	 * exception, so result should be FPSCR_IOC
+	 */
+	num1.d = 123;
+	num2.d = -852;
+	TEST_VFP_EXCEPTION(
+		"fsqrtd %P[result], %P[num2]"	"\n"
+		"fabsd %P[result], %P[num1]",
+		pass, result.d, num1.d, num2.d, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "IOC");
+
+	/*
+	 * First instruction set Inexact bit and second Invalid operation
+	 * So expected is OR of this two values
+	 */
+	num1.d = 123.98765;
+	num2.d = -152;
+	TEST_VFP_EXCEPTION(
+		"fsqrtd %P[result], %P[num1]"	"\n"
+		"fsqrtd %P[result], %P[num2]",
+		pass, result.d, num1.d, num2.d, (FPSCR_IOC|FPSCR_IXC) );
+	report("%s[%s]", (pass), testname, "IOC|IXC");
+}
+
 static void test_fabsd()
 {
 	DOUBLE_UNION(result, 0ULL);
@@ -956,6 +991,7 @@ static void test_fsubs()
 	report("%s[%s]", (pass), testname, "(inf)-(NaN)");
 }
 
+
 static void test_disabled(void)
 {
 	disable_vfp();
@@ -1008,6 +1044,8 @@ int main(int argc, char **argv)
 
 	if (strcmp(argv[0], "available") == 0)
 		test_available();
+	else if (strcmp(argv[0], "cumulative") == 0)
+		test_cumulative();
 	else if (strcmp(argv[0], "disabled") == 0)
 		test_disabled();
 	else if (strcmp(argv[0], "fabsd") == 0)
