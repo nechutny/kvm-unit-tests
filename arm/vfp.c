@@ -689,6 +689,198 @@ static void test_fdivd()
 	report("%s[%s]", (result.d == num2.d && pass), testname, "(1.0)/(1.0)");
 }
 
+static void test_fmacd()
+{
+	/*
+	 * Unfortunetaly we can't use FPSCR_TEST_EXCEPTION, because gcc
+	 * can't combine + and ? in contraint. So we must modify it for
+	 * double and single precision.
+	 */
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Test 0+0*0
+	 */
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.d == 0 && pass == FPSCR_NO_EXCEPTION),
+		testname, "0");
+
+	/*
+	 * Test 0+inf*1
+	 */
+	result.d = 0;
+	num1.input = DOUBLE_PLUS_INF;
+	num2.d = 1;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.input == DOUBLE_PLUS_INF && pass == FPSCR_NO_EXCEPTION),
+		testname, "INF");
+
+	/*
+	 * Test cancel INF
+	 * -Inf+inf*inf
+	 */
+	result.input = DOUBLE_MINUS_INF;
+	num1.input = num2.input = DOUBLE_PLUS_INF;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "Canceling inf");
+
+	/*
+	 * Test calculating with NaN
+	 */
+	result.d = 9455659;
+	num1.d = 12348.5;
+	num2.input = DOUBLE_PLUS_NAN;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
+}
+
+static void test_fmacs()
+{
+	/*
+	 * Unfortunetaly we can't use FPSCR_TEST_EXCEPTION, because gcc
+	 * can't combine + and ? in contraint. So we must modify it for
+	 * double and single precision.
+	 */
+	FLOAT_UNION(num1, 0UL);
+	FLOAT_UNION(num2, 0UL);
+	FLOAT_UNION(result, 0UL);
+	unsigned long pass = 0UL;
+
+	/*
+	 * Test 0+0*0
+	 */
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.f),
+			  [num2]"w" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.f == 0 && pass == FPSCR_NO_EXCEPTION),
+		testname, "0");
+
+	/*
+	 * Test 0+inf*1
+	 */
+	result.f = 0;
+	num1.input = FLOAT_PLUS_INF;
+	num2.f = 1;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.f),
+			  [num2]"w" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.input == FLOAT_PLUS_INF && pass == FPSCR_NO_EXCEPTION),
+		testname, "INF");
+
+	/*
+	 * Test cancel INF
+	 * -Inf+inf*inf
+	 */
+	result.input = FLOAT_MINUS_INF;
+	num1.input = num2.input = FLOAT_PLUS_INF;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.f),
+			  [num2]"w" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "Canceling inf");
+
+	/*
+	 * Test calculating with NaN
+	 */
+	result.f = 9455659;
+	num1.f = 12348.5;
+	num2.input = FLOAT_PLUS_NAN;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.f),
+			  [num2]"w" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
+}
+
 static void test_fdivs()
 {
 	FLOAT_UNION(num1, 0ULL);
@@ -1198,6 +1390,10 @@ int main(int argc, char **argv)
 		test_fdivd();
 	else if (strcmp(argv[0], "fdivs") == 0)
 		test_fdivs();
+	else if (strcmp(argv[0], "fmacd") == 0)
+		test_fmacd();
+	else if (strcmp(argv[0], "fmacs") == 0)
+		test_fmacs();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
 	else if (strcmp(argv[0], "fnegs") == 0)
