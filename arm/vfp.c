@@ -689,6 +689,91 @@ static void test_fdivd()
 	report("%s[%s]", (result.d == num2.d && pass), testname, "(1.0)/(1.0)");
 }
 
+static void test_fdivs()
+{
+	FLOAT_UNION(num1, 0ULL);
+	FLOAT_UNION(num2, 0ULL);
+	FLOAT_UNION(result, 0ULL);
+	unsigned long pass = 0;
+	
+	/*
+	 * Test (num1)/(-num2)
+	 * Divide positive number by negative.
+	 * Expected result is coresponding negative number.
+	 */
+	num1.f = 0.75;
+	num2.f = -0.1;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == -7.5 && pass), testname, "(num)/(-num)");
+
+	/*
+	 * Test (num1)/(num2)
+	 * Divivde two positive numbers.
+	 * Expected result is coresponding positive number.
+	 */
+	num1.f = 0.875;
+	num2.f = 0.125;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == 7.0 && pass), testname, "(num)/(num)");
+
+	/*
+	 * Test 0/0
+	 * Divide by zero.
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.f = 0.0;
+	num2.f = 0.0;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/0");
+
+	/*
+	 * Test 0/-0
+	 * Divide positive zero by negative zero
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.input = FLOAT_PLUS_NULL;
+	num2.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "0/-0");
+
+	/*
+	 * Test 1.25/-0
+	 * Divide number by negative zero.
+	 * Should set DZC bit to 1, others to 0
+	 */
+	num1.f = 1.25;
+	num2.input = FLOAT_MINUS_NULL;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_DZC);
+	report("%s[%s]", (pass), testname, "num/-0");
+
+	/*
+	 * Test -inf/inf
+	 * Divide -infinity by +infinity
+	 * Should set IOC bit to 1, others to 0
+	 */
+	num1.input = FLOAT_MINUS_INF;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_IOC);
+	report("%s[%s]", (pass), testname, "(-inf)/(inf)");
+
+	/*
+	 * Test 1.0/1.0
+	 * Divide 1 by 1, fract is 0, so test correct detecting 1.0 vs. 0.0
+	 * Should set FPSCR bits to 0 and expected result is 1.0
+	 */
+	num2.f = num1.f = 1.0;
+	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
+		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
+	report("%s[%s]", (result.f == num2.f && pass), testname, "(1.0)/(1.0)");
+}
+
+
 static void test_fmacd()
 {
 	/*
@@ -806,10 +891,10 @@ static void test_fmacs()
 			"fmacs %[result], %[num1], %[num2]   \n"
 			"fmrx %[pass], fpscr                    \n"
 			"and %[pass], %[pass], %[mask]          \n"
-			: [result]"+w" (result.f),
+			: [result]"+t" (result.f),
 			  [pass]"+r" (pass)
-			: [num1]"w" (num1.f),
-			  [num2]"w" (num2.f),
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
 			  [mask]"r" (FPSCR_CUMULATIVE)
 			: "r0"
 			);
@@ -828,10 +913,10 @@ static void test_fmacs()
 			"fmacs %[result], %[num1], %[num2]   \n"
 			"fmrx %[pass], fpscr                    \n"
 			"and %[pass], %[pass], %[mask]          \n"
-			: [result]"+w" (result.f),
+			: [result]"+t" (result.f),
 			  [pass]"+r" (pass)
-			: [num1]"w" (num1.f),
-			  [num2]"w" (num2.f),
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
 			  [mask]"r" (FPSCR_CUMULATIVE)
 			: "r0"
 			);
@@ -850,10 +935,10 @@ static void test_fmacs()
 			"fmacs %[result], %[num1], %[num2]   \n"
 			"fmrx %[pass], fpscr                    \n"
 			"and %[pass], %[pass], %[mask]          \n"
-			: [result]"+w" (result.f),
+			: [result]"+t" (result.f),
 			  [pass]"+r" (pass)
-			: [num1]"w" (num1.f),
-			  [num2]"w" (num2.f),
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
 			  [mask]"r" (FPSCR_CUMULATIVE)
 			: "r0"
 			);
@@ -871,98 +956,14 @@ static void test_fmacs()
 			"fmacs %[result], %[num1], %[num2]   \n"
 			"fmrx %[pass], fpscr                    \n"
 			"and %[pass], %[pass], %[mask]          \n"
-			: [result]"+w" (result.f),
+			: [result]"+t" (result.f),
 			  [pass]"+r" (pass)
-			: [num1]"w" (num1.f),
-			  [num2]"w" (num2.f),
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
 			  [mask]"r" (FPSCR_CUMULATIVE)
 			: "r0"
 			);
 	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
-}
-
-static void test_fdivs()
-{
-	FLOAT_UNION(num1, 0ULL);
-	FLOAT_UNION(num2, 0ULL);
-	FLOAT_UNION(result, 0ULL);
-	unsigned long pass = 0;
-	
-	/*
-	 * Test (num1)/(-num2)
-	 * Divide positive number by negative.
-	 * Expected result is coresponding negative number.
-	 */
-	num1.f = 0.75;
-	num2.f = -0.1;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
-	report("%s[%s]", (result.f == -7.5 && pass), testname, "(num)/(-num)");
-
-	/*
-	 * Test (num1)/(num2)
-	 * Divivde two positive numbers.
-	 * Expected result is coresponding positive number.
-	 */
-	num1.f = 0.875;
-	num2.f = 0.125;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
-	report("%s[%s]", (result.f == 7.0 && pass), testname, "(num)/(num)");
-
-	/*
-	 * Test 0/0
-	 * Divide by zero.
-	 * Should set IOC bit to 1, others to 0
-	 */
-	num1.f = 0.0;
-	num2.f = 0.0;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_IOC);
-	report("%s[%s]", (pass), testname, "0/0");
-
-	/*
-	 * Test 0/-0
-	 * Divide positive zero by negative zero
-	 * Should set IOC bit to 1, others to 0
-	 */
-	num1.input = FLOAT_PLUS_NULL;
-	num2.input = FLOAT_MINUS_NULL;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_IOC);
-	report("%s[%s]", (pass), testname, "0/-0");
-
-	/*
-	 * Test 1.25/-0
-	 * Divide number by negative zero.
-	 * Should set DZC bit to 1, others to 0
-	 */
-	num1.f = 1.25;
-	num2.input = FLOAT_MINUS_NULL;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_DZC);
-	report("%s[%s]", (pass), testname, "num/-0");
-
-	/*
-	 * Test -inf/inf
-	 * Divide -infinity by +infinity
-	 * Should set IOC bit to 1, others to 0
-	 */
-	num1.input = FLOAT_MINUS_INF;
-	num2.input = FLOAT_PLUS_INF;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_IOC);
-	report("%s[%s]", (pass), testname, "(-inf)/(inf)");
-
-	/*
-	 * Test 1.0/1.0
-	 * Divide 1 by 1, fract is 0, so test correct detecting 1.0 vs. 0.0
-	 * Should set FPSCR bits to 0 and expected result is 1.0
-	 */
-	num2.f = num1.f = 1.0;
-	TEST_VFP_EXCEPTION("fdivs %[result], %[num1], %[num2]",
-		pass, result.f, num1.f, num2.f, FPSCR_NO_EXCEPTION);
-	report("%s[%s]", (result.f == num2.f && pass), testname, "(1.0)/(1.0)");
 }
 
 static void test_fnegd()
@@ -1036,6 +1037,197 @@ static void test_fnegs()
 	TEST_VFP_EXCEPTION("fnegs %[result], %[num1]",
 		pass, result.f, num.f, NULL, FPSCR_NO_EXCEPTION);
 	report("%s[%s]", (result.input == FLOAT_MINUS_NAN && pass), testname, "+NaN");
+}
+
+
+static void test_fnmacd()
+{
+	/*
+	 * Unfortunetaly we can't use FPSCR_TEST_EXCEPTION, because gcc
+	 * can't combine + and ? in contraint. So we must modify it for
+	 * double and single precision.
+	 */
+	DOUBLE_UNION(num1, 0ULL);
+	DOUBLE_UNION(num2, 0ULL);
+	DOUBLE_UNION(result, 0ULL);
+	unsigned long pass = 0;
+
+	/*
+	 * Test 0-0*0
+	 */
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.d == 0 && pass == FPSCR_NO_EXCEPTION),
+		testname, "0");
+
+	/*
+	 * Test 0-inf*1
+	 */
+	result.d = 0;
+	num1.input = DOUBLE_PLUS_INF;
+	num2.d = 1;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.input == DOUBLE_MINUS_INF && pass == FPSCR_NO_EXCEPTION),
+		testname, "INF");
+
+	/*
+	 * Test cancel INF
+	 * Inf-inf*inf
+	 */
+	num2.input = num1.input = result.input = DOUBLE_PLUS_INF;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "Canceling inf");
+
+	/*
+	 * Test calculating with NaN
+	 */
+	result.d = 9455659;
+	num1.d = 12348.5;
+	num2.input = DOUBLE_PLUS_NAN;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacd %P[result], %P[num1], %P[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+w" (result.d),
+			  [pass]"+r" (pass)
+			: [num1]"w" (num1.d),
+			  [num2]"w" (num2.d),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
+}
+
+static void test_fnmacs()
+{
+	/*
+	 * Unfortunetaly we can't use FPSCR_TEST_EXCEPTION, because gcc
+	 * can't combine + and ? in contraint. So we must modify it for
+	 * double and single precision.
+	 */
+	FLOAT_UNION(num1, 0UL);
+	FLOAT_UNION(num2, 0UL);
+	FLOAT_UNION(result, 0UL);
+	unsigned long pass = 0UL;
+
+	/*
+	 * Test 0-0*0
+	 */
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+t" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.f == 0 && pass == FPSCR_NO_EXCEPTION),
+		testname, "0");
+
+	/*
+	 * Test 0-inf*1
+	 */
+	result.f = 0;
+	num1.input = FLOAT_PLUS_INF;
+	num2.f = 1;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+t" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (result.input == FLOAT_MINUS_INF && pass == FPSCR_NO_EXCEPTION),
+		testname, "INF");
+
+	/*
+	 * Test cancel INF
+	 * Inf-inf*inf
+	 */
+	num2.input = num1.input =  result.input = FLOAT_PLUS_INF;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+t" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "Canceling inf");
+
+	/*
+	 * Test calculating with NaN
+	 */
+	result.f = 9455659;
+	num1.f = 12348.5;
+	num2.input = FLOAT_PLUS_NAN;
+	asm volatile(   "fmrx r0, fpscr                         \n"
+			"bic r0, r0, %[mask]                    \n"
+			"fmxr fpscr, r0                         \n"
+			"fnmacs %[result], %[num1], %[num2]   \n"
+			"fmrx %[pass], fpscr                    \n"
+			"and %[pass], %[pass], %[mask]          \n"
+			: [result]"+t" (result.f),
+			  [pass]"+r" (pass)
+			: [num1]"t" (num1.f),
+			  [num2]"t" (num2.f),
+			  [mask]"r" (FPSCR_CUMULATIVE)
+			: "r0"
+			);
+	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
 }
 
 static void test_fsqrtd()
@@ -1396,6 +1588,10 @@ int main(int argc, char **argv)
 		test_fmacs();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
+	else if (strcmp(argv[0], "fnmacd") == 0)
+		test_fnmacd();
+	else if (strcmp(argv[0], "fnmacs") == 0)
+		test_fnmacs();
 	else if (strcmp(argv[0], "fnegs") == 0)
 		test_fnegs();
 	else if (strcmp(argv[0], "fsqrtd") == 0)
