@@ -894,7 +894,7 @@ static void test_fmacs()
 
 static void test_fmdrr()
 {
-	unsigned long num1 = DOUBLE_PLUS_NULL_BOTTOM, num2 = DOUBLE_PLUS_NULL_TOP;
+	unsigned long num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NULL), num2 = DOUBLE_TOP(DOUBLE_PLUS_NULL);
 	DOUBLE_UNION(num3, 0xFFFFFFFFFFFFFFFF);
 
 	/* Copy all 0 to double containing all bits set to 1 */
@@ -907,8 +907,8 @@ static void test_fmdrr()
 		testname, "Null");
 
 	/* Convert splitted -Inf double to double register */
-	num1 = DOUBLE_MINUS_INF_BOTTOM;
-	num2 = DOUBLE_MINUS_INF_TOP;
+	num1 = DOUBLE_BOTTOM(DOUBLE_MINUS_INF);
+	num2 = DOUBLE_TOP(DOUBLE_MINUS_INF);
 	asm volatile("fmdrr %P[num3], %[num1], %[num2]"
 	: [num3]"=w" (num3.d)
 	: [num1]"r" (num1),
@@ -918,8 +918,8 @@ static void test_fmdrr()
 		testname, "-Inf");
 
 	/* Convert splitted +NaN double to double register */
-	num1 = DOUBLE_PLUS_NAN_BOTTOM;
-	num2 = DOUBLE_PLUS_NAN_TOP;
+	num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NAN);
+	num2 = DOUBLE_TOP(DOUBLE_PLUS_NAN);
 	asm volatile("fmdrr %P[num3], %[num1], %[num2]"
 	: [num3]"=w" (num3.d)
 	: [num1]"r" (num1),
@@ -940,8 +940,8 @@ static void test_fmrrd()
 	  [num2]"=r" (num2)
 	: [num3]"w" (num3.d)
 	);
-	report("%s[%s]", (num1 == DOUBLE_PLUS_NULL_BOTTOM &&
-			  num2 == DOUBLE_PLUS_NULL_TOP ),
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_PLUS_NULL) &&
+			  num2 == DOUBLE_TOP(DOUBLE_PLUS_NULL) ),
 		testname, "Null");
 
 	/* Split -Inf double to two rX registers */
@@ -951,8 +951,8 @@ static void test_fmrrd()
 	  [num2]"=r" (num2)
 	: [num3]"w" (num3.d)
 	);
-	report("%s[%s]", (num1 == DOUBLE_MINUS_INF_BOTTOM &&
-			  num2 == DOUBLE_MINUS_INF_TOP ),
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_MINUS_INF) &&
+			  num2 == DOUBLE_TOP(DOUBLE_MINUS_INF) ),
 		testname, "-Inf");
 
 	/* Split +NaN double to two rX registers */
@@ -962,8 +962,8 @@ static void test_fmrrd()
 	  [num2]"=r" (num2)
 	: [num3]"w" (num3.d)
 	);
-	report("%s[%s]", (num1 == DOUBLE_PLUS_NAN_BOTTOM &&
-			  num2 == DOUBLE_PLUS_NAN_TOP ),
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_PLUS_NAN) &&
+			  num2 == DOUBLE_TOP(DOUBLE_PLUS_NAN) ),
 		testname, "+NaN");
 }
 
