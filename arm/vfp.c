@@ -892,6 +892,132 @@ static void test_fmacs()
 	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
 }
 
+static void test_fmdhr()
+{
+	unsigned long num1 = DOUBLE_TOP(DOUBLE_PLUS_NULL);
+	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
+
+	/* Copy top of +0 to double containing -0 */
+	asm volatile("fmdhr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_PLUS_NULL), testname, "Null");
+	
+	/* Copy top of -Inf to double containing +Inf */
+	num2.input = DOUBLE_PLUS_INF;
+	num1 = DOUBLE_TOP(DOUBLE_MINUS_INF);
+	asm volatile("fmdhr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_MINUS_INF), testname, "+Inf");
+
+	/* Copy top of +NaN to double containing -NaN */
+	num2.input = DOUBLE_MINUS_NAN;
+	num1 = DOUBLE_TOP(DOUBLE_PLUS_NAN);
+	asm volatile("fmdhr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_PLUS_NAN), testname, "+NaN");
+}
+
+static void test_fmdlr()
+{
+	unsigned long num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NULL);
+	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
+
+	/* Copy bottom of +0 to double containing -0 */
+	asm volatile("fmdlr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_MINUS_NULL), testname, "Null");
+	
+	/* Copy bottom of -Inf to double containing +Inf */
+	num2.input = DOUBLE_PLUS_INF;
+	num1 = DOUBLE_BOTTOM(DOUBLE_MINUS_INF);
+	asm volatile("fmdlr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_PLUS_INF), testname, "+Inf");
+
+	/* Copy bottom of +NaN to double containing -NaN */
+	num2.input = DOUBLE_MINUS_NAN;
+	num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NAN);
+	asm volatile("fmdlr %P[num2], %[num1]"
+	: [num2]"+w" (num2.d)
+	: [num1]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == DOUBLE_MINUS_NAN), testname, "+NaN");
+}
+
+static void test_fmrdh()
+{
+	unsigned long num1;
+	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
+
+	/* Copy top of +0 to rX */
+	asm volatile("fmrdh %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_TOP(DOUBLE_MINUS_NULL)),
+		testname, "-Null");
+	
+	/* Copy top of -Inf to rX */
+	num2.input = DOUBLE_PLUS_INF;
+	asm volatile("fmrdh %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_TOP(DOUBLE_PLUS_INF)),
+		testname, "+Inf");
+
+	/* Copy top of +NaN to rX */
+	num2.input = DOUBLE_MINUS_NAN;
+	asm volatile("fmrdh %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_TOP(DOUBLE_MINUS_NAN)),
+		testname, "-NaN");
+}
+
+static void test_fmrdl()
+{
+	unsigned long num1;
+	DOUBLE_UNION(num2, DOUBLE_MINUS_NULL);
+
+	/* Copy bottom of +0 to rX */
+	asm volatile("fmrdl %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_MINUS_NULL)),
+		testname, "-Null");
+	
+	/* Copy bottom of -Inf to rX */
+	num2.input = DOUBLE_PLUS_INF;
+	asm volatile("fmrdl %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_PLUS_INF)),
+		testname, "+Inf");
+
+	/* Copy bottom of +NaN to rX */
+	num2.input = DOUBLE_MINUS_NAN;
+	asm volatile("fmrdl %[num1], %P[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"w" (num2.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_BOTTOM(DOUBLE_MINUS_NAN)),
+		testname, "-NaN");
+}
+
 static void test_fmdrr()
 {
 	unsigned long num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NULL), num2 = DOUBLE_TOP(DOUBLE_PLUS_NULL);
@@ -903,8 +1029,7 @@ static void test_fmdrr()
 	: [num1]"r" (num1),
 	  [num2]"r" (num2)
 	);
-	report("%s[%s]", (num3.input == 0ULL),
-		testname, "Null");
+	report("%s[%s]", (num3.input == 0ULL), testname, "Null");
 
 	/* Convert splitted -Inf double to double register */
 	num1 = DOUBLE_BOTTOM(DOUBLE_MINUS_INF);
@@ -914,8 +1039,7 @@ static void test_fmdrr()
 	: [num1]"r" (num1),
 	  [num2]"r" (num2)
 	);
-	report("%s[%s]", (num3.input == DOUBLE_MINUS_INF),
-		testname, "-Inf");
+	report("%s[%s]", (num3.input == DOUBLE_MINUS_INF), testname, "-Inf");
 
 	/* Convert splitted +NaN double to double register */
 	num1 = DOUBLE_BOTTOM(DOUBLE_PLUS_NAN);
@@ -925,8 +1049,7 @@ static void test_fmdrr()
 	: [num1]"r" (num1),
 	  [num2]"r" (num2)
 	);
-	report("%s[%s]", (num3.input == DOUBLE_PLUS_NAN),
-		testname, "+NaN");
+	report("%s[%s]", (num3.input == DOUBLE_PLUS_NAN), testname, "+NaN");
 }
 
 static void test_fmrrd()
@@ -1653,6 +1776,14 @@ int main(int argc, char **argv)
 		test_fmacd();
 	else if (strcmp(argv[0], "fmacs") == 0)
 		test_fmacs();
+	else if (strcmp(argv[0], "fmdhr") == 0)
+		test_fmdhr();
+	else if (strcmp(argv[0], "fmdlr") == 0)
+		test_fmdlr();
+	else if (strcmp(argv[0], "fmrdh") == 0)
+		test_fmrdh();
+	else if (strcmp(argv[0], "fmrdl") == 0)
+		test_fmrdl();
 	else if (strcmp(argv[0], "fmdrr") == 0)
 		test_fmdrr();
 	else if (strcmp(argv[0], "fmrrd") == 0)
