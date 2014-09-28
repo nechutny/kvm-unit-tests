@@ -1090,6 +1090,35 @@ static void test_fmrrd()
 		testname, "+NaN");
 }
 
+static void test_fmrs()
+{
+	unsigned long num1 = 0xFFFFFFFF;
+	FLOAT_UNION(num2, FLOAT_PLUS_NULL);
+
+	/* Copy nulls from single to rX */
+	asm volatile("fmrs %[num1], %[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"t" (num2.f)
+	);
+	report("%s[%s]", (num1 == FLOAT_PLUS_NULL), testname, "Null");
+
+	/* Copy -INF from single to rX */
+	num2.input = FLOAT_MINUS_INF;
+	asm volatile("fmrs %[num1], %[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"t" (num2.f)
+	);
+	report("%s[%s]", (num1 == FLOAT_MINUS_INF), testname, "-Inf");
+
+	/* Copy +NaN from single to rX */
+	num2.input = FLOAT_PLUS_NAN;
+	asm volatile("fmrs %[num1], %[num2]"
+	: [num1]"=r" (num1)
+	: [num2]"t" (num2.f)
+	);
+	report("%s[%s]", (num1 == FLOAT_PLUS_NAN), testname, "+NaN");
+}
+
 static void test_fmscd()
 {
 	DOUBLE_UNION(num1, 0ULL);
@@ -1174,6 +1203,36 @@ static void test_fmscs()
 	num2.input = FLOAT_PLUS_NAN;
 	TEST_VFP_FLOAT("fmscs %[result], %[num1], %[num2] \n");
 	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
+}
+
+static void test_fmsr()
+{
+	unsigned long num1 = FLOAT_PLUS_NULL;
+	FLOAT_UNION(num2, 0xFFFFFFFF);
+
+	/* Copy nulls from single to rX */
+	asm volatile("fmsr %[num1], %[num2]"
+	: [num1]"=t" (num2.f)
+	: [num2]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == FLOAT_PLUS_NULL), testname, "Null");
+
+	/* Copy -INF from single to rX */
+	num1 = FLOAT_MINUS_INF;
+	asm volatile("fmsr %[num1], %[num2]"
+	: [num1]"=t" (num2.f)
+	: [num2]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == FLOAT_MINUS_INF), testname, "-Inf");
+
+	/* Copy +NaN from single to rX */
+	num1 = FLOAT_PLUS_NAN;
+	asm volatile("fmsr %[num1], %[num2]"
+	: [num1]"=t" (num2.f)
+	: [num2]"r" (num1)
+	);
+	report("%s[%s]", (num2.input == FLOAT_PLUS_NAN), testname, "+NaN");
+	
 }
 
 static void test_fnegd()
@@ -1788,10 +1847,14 @@ int main(int argc, char **argv)
 		test_fmdrr();
 	else if (strcmp(argv[0], "fmrrd") == 0)
 		test_fmrrd();
+	else if (strcmp(argv[0], "fmrs") == 0)
+		test_fmrs();
 	else if (strcmp(argv[0], "fmscd") == 0)
 		test_fmscd();
 	else if (strcmp(argv[0], "fmscs") == 0)
 		test_fmscs();
+	else if (strcmp(argv[0], "fmsr") == 0)
+		test_fmsr();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
 	else if (strcmp(argv[0], "fnmacd") == 0)
