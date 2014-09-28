@@ -1308,6 +1308,78 @@ static void test_fmsrr()
 		testname, "Inf and -NaN");
 }
 
+static void test_fmuld()
+{
+	unsigned long pass = 0;
+	DOUBLE_UNION(num1,0);
+	DOUBLE_UNION(num2,0);
+	DOUBLE_UNION(result,DOUBLE_MINUS_NULL);
+
+	/* Compute 12.75*(-0.375) */
+	num1.d = 12.75;
+	num2.d = -0.375;
+	TEST_VFP_EXCEPTION("fmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.d == -4.78125), testname, "Num");
+
+	/* -0*Inf should result to NaN */
+	num1.input = DOUBLE_MINUS_NULL;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", pass, testname, "-0*Inf");
+
+	/* -5*Inf should result to -Inf */
+	num1.d = -5;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.input == DOUBLE_MINUS_INF), testname, "-5*Inf");
+
+	/* 488*NaN should result to NaN*/
+	num1.d = 488;
+	num2.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_IOC));
+	report("%s[%s]", (pass), testname, "488*NaN");
+}
+
+static void test_fmuls()
+{
+	unsigned long pass = 0;
+	FLOAT_UNION(num1,0);
+	FLOAT_UNION(num2,0);
+	FLOAT_UNION(result,FLOAT_MINUS_NULL);
+
+	/* Compute 12.75*(-0.375) */
+	num1.f = 12.75;
+	num2.f = -0.375;
+	TEST_VFP_EXCEPTION("fmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.f == -4.78125), testname, "Num");
+
+	/* -0*Inf should result to NaN */
+	num1.input = FLOAT_MINUS_NULL;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", pass, testname, "-0*Inf");
+
+	/* -5*Inf should result to -Inf */
+	num1.f = -5;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.input == FLOAT_MINUS_INF), testname, "-5*Inf");
+
+	/* 488*NaN should result to NaN*/
+	num1.f = 488;
+	num2.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_IOC));
+	report("%s[%s]", (pass), testname, "488*NaN");
+}
+
 static void test_fnegd()
 {
 	DOUBLE_UNION(num, 0ULL);
@@ -1550,6 +1622,78 @@ static void test_fnmscs()
 	num2.input = FLOAT_PLUS_NAN;
 	TEST_VFP_FLOAT("fnmscs %[result], %[num1], %[num2] \n");
 	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
+}
+
+static void test_fnmuld()
+{
+	unsigned long pass = 0;
+	DOUBLE_UNION(num1,0);
+	DOUBLE_UNION(num2,0);
+	DOUBLE_UNION(result,DOUBLE_MINUS_NULL);
+
+	/* Compute 72.75*(-42.375) */
+	num1.d = 72.75;
+	num2.d = -42.375;
+	TEST_VFP_EXCEPTION("fnmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s] ", (pass && result.d == 3082.78125), testname, "num");
+
+	/* -0*Inf should result to -NaN */
+	num1.input = DOUBLE_MINUS_NULL;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", pass, testname, "-0*Inf");
+
+	/* -5*Inf should result to +Inf */
+	num1.d = -5;
+	num2.input = DOUBLE_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.input == DOUBLE_PLUS_INF), testname, "-5*Inf");
+
+	/* 488*NaN should result to NaN*/
+	num1.d = 488;
+	num2.input = DOUBLE_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fnmuld %P[result], %[num1], %[num2]", pass,
+		result.d, num1.d, num2.d, (FPSCR_IOC));
+	report("%s[%s]", (pass), testname, "488*NaN");
+}
+
+static void test_fnmuls()
+{
+	unsigned long pass = 0;
+	FLOAT_UNION(num1,0);
+	FLOAT_UNION(num2,0);
+	FLOAT_UNION(result,FLOAT_MINUS_NULL);
+
+	/* Compute 72.75*(-42.375) */
+	num1.f = 72.75;
+	num2.f = -42.375;
+	TEST_VFP_EXCEPTION("fnmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s] ", (pass && result.f == 3082.78125), testname, "num");
+
+	/* -0*Inf should result to -NaN */
+	num1.input = FLOAT_MINUS_NULL;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", pass, testname, "-0*Inf");
+
+	/* -5*Inf should result to +Inf */
+	num1.f = -5;
+	num2.input = FLOAT_PLUS_INF;
+	TEST_VFP_EXCEPTION("fnmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_NO_EXCEPTION));
+	report("%s[%s]", (pass && result.input == FLOAT_PLUS_INF), testname, "-5*Inf");
+
+	/* 488*NaN should result to NaN*/
+	num1.f = 488;
+	num2.input = FLOAT_PLUS_NAN;
+	TEST_VFP_EXCEPTION("fnmuls %[result], %[num1], %[num2]", pass,
+		result.f, num1.f, num2.f, (FPSCR_IOC));
+	report("%s[%s]", (pass), testname, "488*NaN");
 }
 
 static void test_fsqrtd()
@@ -1932,6 +2076,10 @@ int main(int argc, char **argv)
 		test_fmsr();
 	else if (strcmp(argv[0], "fmsrr") == 0)
 		test_fmsrr();
+	else if (strcmp(argv[0], "fmuld") == 0)
+		test_fmuld();
+	else if (strcmp(argv[0], "fmuls") == 0)
+		test_fmuls();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
 	else if (strcmp(argv[0], "fnmacd") == 0)
@@ -1942,6 +2090,10 @@ int main(int argc, char **argv)
 		test_fnmscd();
 	else if (strcmp(argv[0], "fnmscs") == 0)
 		test_fnmscs();
+	else if (strcmp(argv[0], "fnmuld") == 0)
+		test_fnmuld();
+	else if (strcmp(argv[0], "fnmuls") == 0)
+		test_fnmuls();
 	else if (strcmp(argv[0], "fnegs") == 0)
 		test_fnegs();
 	else if (strcmp(argv[0], "fsqrtd") == 0)
