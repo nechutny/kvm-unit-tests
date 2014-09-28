@@ -1090,6 +1090,42 @@ static void test_fmrrd()
 		testname, "+NaN");
 }
 
+static void test_fmrrs()
+{
+	unsigned long num1 = 0UL, num2 = 0UL;
+	FLOAT_UNION(num3, 0xFFFFFFFF);
+	FLOAT_UNION(num4, 0xFFFFFFFF);
+
+	/* Copy single precision registers to rX */
+	asm volatile(
+		"fcpys s0, %[num3]"			"\n"
+		"fcpys s1, %[num4]"			"\n"
+		"fmrrs %[num1], %[num2], {s0, s1}"
+	: [num1]"=r" (num1),
+	  [num2]"=r" (num2)
+	: [num3]"t" (num3.f),
+	  [num4]"t" (num4.f)
+	);
+	report("%s[%s]", (num1 == 0xFFFFFFFF && num2 == 0xFFFFFFFF ),
+		testname, "1s");
+
+	num3.input = FLOAT_MINUS_NAN;
+	num4.input = FLOAT_PLUS_INF;
+	/* Copy -NaN and +Inf to rX registers */
+	asm volatile(
+		"fcpys s0, %[num3]"			"\n"
+		"fcpys s1, %[num4]"			"\n"
+		"fmrrs %[num1], %[num2], {s0, s1}"
+	: [num1]"=r" (num1),
+	  [num2]"=r" (num2)
+	: [num3]"t" (num3.f),
+	  [num4]"t" (num4.f)
+	);
+	report("%s[%s]", (num1 == FLOAT_MINUS_NAN &&
+			  num2 == FLOAT_PLUS_INF ),
+		testname, "Inf and -NaN");
+}
+
 static void test_fmrs()
 {
 	unsigned long num1 = 0xFFFFFFFF;
@@ -1232,7 +1268,44 @@ static void test_fmsr()
 	: [num2]"r" (num1)
 	);
 	report("%s[%s]", (num2.input == FLOAT_PLUS_NAN), testname, "+NaN");
-	
+}
+
+static void test_fmsrr()
+{
+	unsigned long num1 = 0xFFFFFFFF, num2 = 0xFFFFFFFF;
+	FLOAT_UNION(num3, FLOAT_PLUS_NULL);
+	FLOAT_UNION(num4, FLOAT_PLUS_NULL);
+
+	/* Copy 1s to single precision registers */
+	asm volatile(
+		"fmsrr {s0, s1}, %[num1], %[num2]"	"\n"
+		"fcpys %[num3], s0"			"\n"
+		"fcpys %[num4], s1"
+	: [num3]"=t" (num3.f),
+	  [num4]"=t" (num4.f)
+	: [num1]"r" (num1),
+	  [num2]"r" (num2)
+	: "s0","s1" 
+	);
+	report("%s[%s]", (num3.input == 0xFFFFFFFF &&
+			  num4.input == 0xFFFFFFFF ), testname, "1s");
+
+	num1 = FLOAT_MINUS_NAN;
+	num2 = FLOAT_PLUS_INF;
+	/* Copy -NaN and +Inf to sX registers */
+	asm volatile(
+		"fmsrr {s0, s1}, %[num1], %[num2]"	"\n"
+		"fcpys %[num3], s0"			"\n"
+		"fcpys %[num4], s1"
+	: [num3]"=t" (num3.f),
+	  [num4]"=t" (num4.f)
+	: [num1]"r" (num1),
+	  [num2]"r" (num2)
+	: "s0","s1" 
+	);
+	report("%s[%s]", (num3.input == FLOAT_MINUS_NAN &&
+			  num4.input == FLOAT_PLUS_INF ),
+		testname, "Inf and -NaN");
 }
 
 static void test_fnegd()
@@ -1847,6 +1920,8 @@ int main(int argc, char **argv)
 		test_fmdrr();
 	else if (strcmp(argv[0], "fmrrd") == 0)
 		test_fmrrd();
+	else if (strcmp(argv[0], "fmrrs") == 0)
+		test_fmrrs();
 	else if (strcmp(argv[0], "fmrs") == 0)
 		test_fmrs();
 	else if (strcmp(argv[0], "fmscd") == 0)
@@ -1855,6 +1930,8 @@ int main(int argc, char **argv)
 		test_fmscs();
 	else if (strcmp(argv[0], "fmsr") == 0)
 		test_fmsr();
+	else if (strcmp(argv[0], "fmsrr") == 0)
+		test_fmsrr();
 	else if (strcmp(argv[0], "fnegd") == 0)
 		test_fnegd();
 	else if (strcmp(argv[0], "fnmacd") == 0)
