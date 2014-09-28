@@ -892,6 +892,81 @@ static void test_fmacs()
 	report("%s[%s]", (pass == FPSCR_IOC), testname, "NaN");
 }
 
+static void test_fmdrr()
+{
+	unsigned long num1 = DOUBLE_PLUS_NULL_BOTTOM, num2 = DOUBLE_PLUS_NULL_TOP;
+	DOUBLE_UNION(num3, 0xFFFFFFFFFFFFFFFF);
+
+	/* Copy all 0 to double containing all bits set to 1 */
+	asm volatile("fmdrr %P[num3], %[num1], %[num2]"
+	: [num3]"=w" (num3.d)
+	: [num1]"r" (num1),
+	  [num2]"r" (num2)
+	);
+	report("%s[%s]", (num3.input == 0ULL),
+		testname, "Null");
+
+	/* Convert splitted -Inf double to double register */
+	num1 = DOUBLE_MINUS_INF_BOTTOM;
+	num2 = DOUBLE_MINUS_INF_TOP;
+	asm volatile("fmdrr %P[num3], %[num1], %[num2]"
+	: [num3]"=w" (num3.d)
+	: [num1]"r" (num1),
+	  [num2]"r" (num2)
+	);
+	report("%s[%s]", (num3.input == DOUBLE_MINUS_INF),
+		testname, "-Inf");
+
+	/* Convert splitted +NaN double to double register */
+	num1 = DOUBLE_PLUS_NAN_BOTTOM;
+	num2 = DOUBLE_PLUS_NAN_TOP;
+	asm volatile("fmdrr %P[num3], %[num1], %[num2]"
+	: [num3]"=w" (num3.d)
+	: [num1]"r" (num1),
+	  [num2]"r" (num2)
+	);
+	report("%s[%s]", (num3.input == DOUBLE_PLUS_NAN),
+		testname, "+NaN");
+}
+
+static void test_fmrrd()
+{
+	unsigned long num1 = 0xFFFFFFF, num2 = 0xFFFFFFFF;
+	DOUBLE_UNION(num3, DOUBLE_PLUS_NULL);
+
+	/* Copy 0 double to two rX registers */
+	asm volatile("fmrrd %[num1], %[num2], %P[num3]"
+	: [num1]"=r" (num1),
+	  [num2]"=r" (num2)
+	: [num3]"w" (num3.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_PLUS_NULL_BOTTOM &&
+			  num2 == DOUBLE_PLUS_NULL_TOP ),
+		testname, "Null");
+
+	/* Split -Inf double to two rX registers */
+	num3.input = DOUBLE_MINUS_INF;
+	asm volatile("fmrrd %[num1], %[num2], %P[num3]"
+	: [num1]"=r" (num1),
+	  [num2]"=r" (num2)
+	: [num3]"w" (num3.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_MINUS_INF_BOTTOM &&
+			  num2 == DOUBLE_MINUS_INF_TOP ),
+		testname, "-Inf");
+
+	/* Split +NaN double to two rX registers */
+	num3.input = DOUBLE_PLUS_NAN;
+	asm volatile("fmrrd %[num1], %[num2], %P[num3]"
+	: [num1]"=r" (num1),
+	  [num2]"=r" (num2)
+	: [num3]"w" (num3.d)
+	);
+	report("%s[%s]", (num1 == DOUBLE_PLUS_NAN_BOTTOM &&
+			  num2 == DOUBLE_PLUS_NAN_TOP ),
+		testname, "+NaN");
+}
+
 static void test_fmscd()
 {
 	DOUBLE_UNION(num1, 0ULL);
@@ -1578,6 +1653,10 @@ int main(int argc, char **argv)
 		test_fmacd();
 	else if (strcmp(argv[0], "fmacs") == 0)
 		test_fmacs();
+	else if (strcmp(argv[0], "fmdrr") == 0)
+		test_fmdrr();
+	else if (strcmp(argv[0], "fmrrd") == 0)
+		test_fmrrd();
 	else if (strcmp(argv[0], "fmscd") == 0)
 		test_fmscd();
 	else if (strcmp(argv[0], "fmscs") == 0)
